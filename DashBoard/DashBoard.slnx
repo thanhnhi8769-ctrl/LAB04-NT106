@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../bai1/src/Bai01/Bai01.csproj" />
+  <Project Path="DashBoard.csproj" />
+</Solution>
