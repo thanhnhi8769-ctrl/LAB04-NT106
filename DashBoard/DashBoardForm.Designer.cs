@@ -45,7 +45,7 @@
             lblLab.ForeColor = Color.White;
             lblLab.Location = new Point(287, 48);
             lblLab.Name = "lblLab";
-            lblLab.Size = new Size(851, 67);
+            lblLab.Size = new Size(420, 35);
             lblLab.TabIndex = 0;
             lblLab.Text = " Working with Web Server in C#";
             // 
@@ -60,7 +60,7 @@
             btnBai1.TabIndex = 1;
             btnBai1.Text = "Bài 1";
             btnBai1.UseVisualStyleBackColor = false;
-            btnBai1.Click += this.btnBai1_Click;
+            btnBai1.Click += btnBai1_Click;
             // 
             // btnBai2
             // 
@@ -73,6 +73,7 @@
             btnBai2.TabIndex = 2;
             btnBai2.Text = "Bài 2";
             btnBai2.UseVisualStyleBackColor = false;
+            btnBai2.Click += btnBai2_Click;
             // 
             // btnBai3
             // 
@@ -85,6 +86,7 @@
             btnBai3.TabIndex = 3;
             btnBai3.Text = "Bài 3";
             btnBai3.UseVisualStyleBackColor = false;
+            btnBai3.Click += btnBai3_Click;
             // 
             // btnBai4
             // 
@@ -118,13 +120,13 @@
             label1.ForeColor = Color.White;
             label1.Location = new Point(403, 617);
             label1.Name = "label1";
-            label1.Size = new Size(625, 61);
+            label1.Size = new Size(322, 31);
             label1.TabIndex = 6;
             label1.Text = "LAB04_NT106 - NHÓM 3";
             // 
             // FormDashBoard
             // 
-            AutoScaleDimensions = new SizeF(18F, 36F);
+            AutoScaleDimensions = new SizeF(9F, 19F);
             AutoScaleMode = AutoScaleMode.Font;
             BackgroundImage = Properties.Resources.Nền_DashBoard;
             BackgroundImageLayout = ImageLayout.Stretch;
