@@ -1,0 +1,344 @@
+using System;
+using System.Drawing;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Lab04_Bai07_Client
+{
+    public partial class HomNayAnGi : Form
+    {
+        private bool isUpdatingPagination = false;
+        private bool _isLoadingTab = false;
+
+        public HomNayAnGi()
+        {
+            InitializeComponent();
+
+            ConfigureFlowLayout(flpAll);
+            ConfigureFlowLayout(flpMine);
+
+            isUpdatingPagination = true;
+            if (cboPage.Items.Count == 0)
+            {
+                cboPage.Items.Add(1);
+            }
+            if (cboPage.SelectedIndex < 0 && cboPage.Items.Count > 0)
+            {
+                cboPage.SelectedIndex = 0;
+            }
+
+            if (cboPageSize.Items.Count == 0)
+            {
+                cboPageSize.Items.AddRange(new object[] { 5, 10, 20 });
+            }
+            if (cboPageSize.SelectedIndex < 0 && cboPageSize.Items.Count > 0)
+            {
+                cboPageSize.SelectedIndex = 0;
+            }
+            isUpdatingPagination = false;
+
+            this.Load += HomNayAnGi_Load;
+        }
+
+        private void ConfigureFlowLayout(FlowLayoutPanel flp)
+        {
+            flp.FlowDirection = FlowDirection.TopDown;
+            flp.WrapContents = false;
+            flp.AutoScroll = true;
+            flp.Padding = new Padding(4);
+            flp.SizeChanged += (s, e) => ResizeCardsInFlowLayout(flp);
+        }
+
+        private void ResizeCardsInFlowLayout(FlowLayoutPanel flp)
+        {
+            int targetWidth = Math.Max(220, flp.ClientSize.Width - 26);
+
+            foreach (Control ctrl in flp.Controls)
+            {
+                if (ctrl is MonAnCard card)
+                {
+                    double ratio = 0.36;
+                    card.Width = targetWidth;
+                    card.Height = Math.Max(135, (int)Math.Round(targetWidth * ratio));
+                    card.Margin = new Padding(0, 0, 0, 10);
+                }
+            }
+        }
+
+        private TabControl? GetParentTabControl()
+        {
+            return flpAll.Parent?.Parent as TabControl ?? flpMine.Parent?.Parent as TabControl;
+        }
+
+        private bool IsMineTabSelected()
+        {
+            var tab = GetParentTabControl();
+            if (tab != null)
+            {
+                return tab.SelectedTab?.Controls.Contains(flpMine) == true || tab.SelectedIndex == 1;
+            }
+            return false;
+        }
+
+        private async void HomNayAnGi_Load(object? sender, EventArgs e)
+        {
+            var tab = GetParentTabControl();
+            if (tab != null)
+            {
+                tab.SelectedIndexChanged += async (s, args) =>
+                {
+                    isUpdatingPagination = true;
+                    if (cboPage.Items.Count > 0) cboPage.SelectedIndex = 0;
+                    isUpdatingPagination = false;
+                    await LoadCurrentTabAsync();
+                };
+            }
+
+            UpdateAuthUI();
+            await LoadCurrentTabAsync();
+        }
+
+        private void UpdateAuthUI()
+        {
+            if (ApiClient.IsLoggedIn)
+            {
+                lblAuthStatus.Text = $"Welcome, {ApiClient.CurrentFirstname}";
+                lblAuthStatus.ForeColor = Color.SeaGreen;
+                lnkAuthAction.Text = "Logout";
+            }
+            else
+            {
+                lblAuthStatus.Text = "Unauthenticated";
+                lblAuthStatus.ForeColor = Color.Crimson;
+                lnkAuthAction.Text = "Login";
+            }
+        }
+
+        private void SetLoadingState(bool loading)
+        {
+            progressBar.Visible = loading;
+            progressBar.Style = loading ? ProgressBarStyle.Marquee : ProgressBarStyle.Blocks;
+            btnAnGiGio.Enabled = !loading;
+            btnThemMonAn.Enabled = !loading;
+        }
+
+        private async Task LoadCurrentTabAsync()
+        {
+            if (_isLoadingTab) return;
+            _isLoadingTab = true;
+
+            bool onlyMine = IsMineTabSelected();
+            FlowLayoutPanel targetPanel = onlyMine ? flpMine : flpAll;
+
+            try
+            {
+                if (onlyMine && !ApiClient.IsLoggedIn)
+                {
+                    targetPanel.Controls.Clear();
+                    targetPanel.Controls.Add(new Label
+                    {
+                        Text = "Vui lòng đăng nhập để xem các món ăn bạn đã đóng góp.",
+                        AutoSize = true,
+                        Padding = new Padding(12),
+                        ForeColor = Color.DimGray,
+                        BackColor = Color.Transparent
+                    });
+                    return;
+                }
+
+                int page = cboPage.SelectedItem is int p ? p : (int.TryParse(cboPage.Text, out int parsedP) ? parsedP : 1);
+                int pageSize = cboPageSize.SelectedItem is int ps ? ps : (int.TryParse(cboPageSize.Text, out int parsedPs) ? parsedPs : 5);
+
+                SetLoadingState(true);
+                var res = await ApiClient.GetMonAnAsync(onlyMine, page, pageSize);
+
+                isUpdatingPagination = true;
+                int totalPages = Math.Max(1, res.TotalPages);
+                cboPage.Items.Clear();
+                for (int i = 1; i <= totalPages; i++)
+                {
+                    cboPage.Items.Add(i);
+                }
+                cboPage.SelectedItem = page <= totalPages ? page : 1;
+                isUpdatingPagination = false;
+
+                targetPanel.SuspendLayout();
+                targetPanel.Controls.Clear();
+
+                foreach (var mon in res.Data)
+                {
+                    MonAnCard card = new MonAnCard();
+                    card.SetData(mon, allowDelete: ApiClient.IsLoggedIn);
+                    card.DeleteClicked += async (s, monId) =>
+                    {
+                        var confirm = MessageBox.Show(
+                            $"Bạn có chắc muốn xoá món '{mon.TenMonAn}' không?",
+                            "Xác nhận",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+
+                        if (confirm == DialogResult.Yes)
+                        {
+                            var (ok, msg) = await ApiClient.DeleteMonAnAsync(monId);
+                            if (ok)
+                            {
+                                await LoadCurrentTabAsync();
+                            }
+                            else
+                            {
+                                MessageBox.Show(msg, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    };
+                    targetPanel.Controls.Add(card);
+                }
+
+                ResizeCardsInFlowLayout(targetPanel);
+                targetPanel.ResumeLayout();
+            }
+            catch (Exception ex)
+            {
+                targetPanel.Controls.Clear();
+                targetPanel.Controls.Add(new Label
+                {
+                    Text = "Chưa kết nối được API Server (http://localhost:8080).\nChi tiết: " + ex.Message,
+                    AutoSize = true,
+                    Padding = new Padding(12),
+                    ForeColor = Color.Firebrick,
+                    BackColor = Color.Transparent
+                });
+            }
+            finally
+            {
+                SetLoadingState(false);
+                _isLoadingTab = false;
+            }
+        }
+
+        private async void btnAnGiGio_Click(object sender, EventArgs e)
+        {
+            bool onlyMine = IsMineTabSelected();
+            if (onlyMine && !ApiClient.IsLoggedIn)
+            {
+                MessageBox.Show("Vui lòng đăng nhập để chọn ngẫu nhiên trong danh sách đóng góp của bạn!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            SetLoadingState(true);
+            try
+            {
+                var (mon, err) = await ApiClient.GetRandomMonAnAsync(onlyMine);
+                if (mon != null)
+                {
+                    using var frmRandom = new RandomMonAn(mon);
+                    frmRandom.ShowDialog(this);
+                }
+                else
+                {
+                    MessageBox.Show(err, "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không kết nối được tới API Server: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                SetLoadingState(false);
+            }
+        }
+
+        private async void btnThemMonAn_Click(object sender, EventArgs e)
+        {
+            if (!ApiClient.IsLoggedIn)
+            {
+                MessageBox.Show("Bạn cần đăng nhập trước khi thêm món ăn!", "Yêu cầu đăng nhập", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                using var frmLogin = new LoginForm();
+                if (frmLogin.ShowDialog(this) != DialogResult.OK) return;
+                UpdateAuthUI();
+            }
+
+            using var frmThem = new ThemMonAn();
+            if (frmThem.ShowDialog(this) == DialogResult.OK)
+            {
+                await LoadCurrentTabAsync();
+            }
+        }
+
+        private async void lnkAuthAction_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (ApiClient.IsLoggedIn)
+            {
+                ApiClient.Logout();
+                UpdateAuthUI();
+                flpMine.Controls.Clear();
+
+                var tab = GetParentTabControl();
+                if (tab != null) tab.SelectedIndex = 0;
+
+                await LoadCurrentTabAsync();
+            }
+            else
+            {
+                using var frmLogin = new LoginForm();
+                if (frmLogin.ShowDialog(this) == DialogResult.OK)
+                {
+                    UpdateAuthUI();
+                    await LoadCurrentTabAsync();
+                }
+            }
+        }
+
+        private async void cboPage_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!isUpdatingPagination)
+            {
+                await LoadCurrentTabAsync();
+            }
+        }
+
+        private async void cboPageSize_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!isUpdatingPagination)
+            {
+                isUpdatingPagination = true;
+                if (cboPage.Items.Count > 0) cboPage.SelectedIndex = 0;
+                isUpdatingPagination = false;
+                await LoadCurrentTabAsync();
+            }
+        }
+
+        private void lblHomNayAnGi_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void flpMine_Paint(object sender, PaintEventArgs e)
+        {
+        }
+
+        private void flpAll_Paint(object sender, PaintEventArgs e)
+        {
+        }
+
+        private void lblAuthStatus_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void progressBar_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void lblPage_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void lblPageSize_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void HomNayAnGi_Load_1(object sender, EventArgs e)
+        {
+        }
+    }
+}
