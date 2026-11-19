@@ -139,7 +139,7 @@
             // 
             // bg
             // 
-            bg.BackgroundImage = LAB04.Properties.Resources.cinema1;
+            bg.BackgroundImage = Bai04.Properties.Resources.cinema1;
             bg.BackgroundImageLayout = ImageLayout.Stretch;
             bg.Dock = DockStyle.Fill;
             bg.Location = new Point(0, 0);
@@ -154,7 +154,7 @@
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.BurlyWood;
-            BackgroundImage = LAB04.Properties.Resources.Gemini_Generated_Image_6456hv6456hv6456;
+            BackgroundImage = Bai04.Properties.Resources.Gemini_Generated_Image_6456hv6456hv6456;
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(550, 266);
             Controls.Add(lblThongBao);

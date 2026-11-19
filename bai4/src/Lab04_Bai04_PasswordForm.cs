@@ -111,7 +111,7 @@ namespace LAB03
         {
             txtPassword.Focus();
 
-            Image gifImg = LAB04.Properties.Resources.cinema;
+            Image gifImg = Bai04.Properties.Resources.cinema;
             bg.Image = gifImg;
             bg.SendToBack();
 

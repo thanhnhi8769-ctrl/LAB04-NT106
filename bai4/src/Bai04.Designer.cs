@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using LAB04.Properties; 
+using Bai04.Properties; 
 namespace LAB03
 {
     partial class Lab04_Bai04
@@ -111,7 +111,7 @@ namespace LAB03
             // btnDaoPhoPiano
             // 
             btnDaoPhoPiano.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnDaoPhoPiano.BackgroundImage = LAB04.Properties.Resources.Screenshot_2026_10_15_013803;
+            btnDaoPhoPiano.BackgroundImage = Bai04.Properties.Resources.Screenshot_2026_10_15_013803;
             btnDaoPhoPiano.BackgroundImageLayout = ImageLayout.Stretch;
             btnDaoPhoPiano.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnDaoPhoPiano.Location = new Point(306, 196);
@@ -124,7 +124,7 @@ namespace LAB03
             // btnMai
             // 
             btnMai.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnMai.BackgroundImage = LAB04.Properties.Resources.Screenshot_2026_10_15_014023;
+            btnMai.BackgroundImage = Bai04.Properties.Resources.Screenshot_2026_10_15_014023;
             btnMai.BackgroundImageLayout = ImageLayout.Stretch;
             btnMai.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnMai.Location = new Point(448, 196);
@@ -137,7 +137,7 @@ namespace LAB03
             // btnGapLaiChiBau
             // 
             btnGapLaiChiBau.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnGapLaiChiBau.BackgroundImage = LAB04.Properties.Resources.Screenshot_2026_10_15_014225; btnGapLaiChiBau.BackgroundImageLayout = ImageLayout.Stretch;
+            btnGapLaiChiBau.BackgroundImage = Bai04.Properties.Resources.Screenshot_2026_10_15_014225; btnGapLaiChiBau.BackgroundImageLayout = ImageLayout.Stretch;
             btnGapLaiChiBau.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnGapLaiChiBau.Location = new Point(591, 196);
             btnGapLaiChiBau.Name = "btnGapLaiChiBau";
@@ -149,7 +149,7 @@ namespace LAB03
             // btnTarot
             // 
             btnTarot.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnTarot.BackgroundImage = LAB04.Properties.Resources.Screenshot_2026_10_15_014406;
+            btnTarot.BackgroundImage = Bai04.Properties.Resources.Screenshot_2026_10_15_014406;
             btnTarot.BackgroundImageLayout = ImageLayout.Stretch;
             btnTarot.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnTarot.Location = new Point(730, 196);
@@ -257,7 +257,7 @@ namespace LAB03
             // 
             // pictureBox1
             // 
-            pictureBox1.BackgroundImage = LAB04.Properties.Resources.cinema; pictureBox1.BackgroundImageLayout = ImageLayout.Stretch;
+            pictureBox1.BackgroundImage = Bai04.Properties.Resources.cinema; pictureBox1.BackgroundImageLayout = ImageLayout.Stretch;
             pictureBox1.Dock = DockStyle.Fill;
             pictureBox1.Location = new Point(0, 0);
             pictureBox1.Name = "pictureBox1";

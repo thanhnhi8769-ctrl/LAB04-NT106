@@ -20,7 +20,7 @@ namespace LAB4
                     "Cảnh báo Server", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
-            Application.Run(new Lab04_Bai04());
+            Application.Run(new LAB03.Lab04_Bai04());
         }
     }
 }

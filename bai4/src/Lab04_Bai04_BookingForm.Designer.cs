@@ -543,7 +543,7 @@
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackgroundImage = LAB04.Properties.Resources.Gemini_Generated_Gif_r7m1tgr7m1tgr7m1;
+            BackgroundImage = Bai04.Properties.Resources.Gemini_Generated_Gif_r7m1tgr7m1tgr7m1;
             BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(800, 450);
             Controls.Add(label7);

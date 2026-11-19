@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LAB04.Properties;
+using Bai04.Properties;
 namespace LAB03
 {
     public partial class Lab04_Bai04_AdminForm : Form
@@ -50,7 +50,7 @@ namespace LAB03
         {
             if (pictureBoxMouseDown != null)
             {
-                Image gifImg1 = LAB04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
+                Image gifImg1 = Bai04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
                 pictureBoxMouseDown.Image = gifImg1;
                 pictureBoxMouseDown.SendToBack();
 
@@ -63,7 +63,7 @@ namespace LAB03
 
             if (bg != null)
             {
-                Image gifImg2 = LAB04.Properties.Resources.cinema;
+                Image gifImg2 = Bai04.Properties.Resources.cinema;
                 bg.Image = gifImg2;
                 bg.SendToBack();
 

@@ -113,7 +113,7 @@
             // 
             // btnXuatThongKe
             // 
-            btnXuatThongKe.BackgroundImage = LAB04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
+            btnXuatThongKe.BackgroundImage = Bai04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
             btnXuatThongKe.Font = new Font("Tahoma", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnXuatThongKe.ForeColor = Color.BurlyWood;
             btnXuatThongKe.Location = new Point(785, 388);
@@ -140,7 +140,7 @@
             // 
             // btnLuu
             // 
-            btnLuu.BackgroundImage = LAB04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
+            btnLuu.BackgroundImage = Bai04.Properties.Resources.Gemini_Generated_Gif_j8cnlfj8cnlfj8cn;
             btnLuu.Font = new Font("Tahoma", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnLuu.ForeColor = Color.BurlyWood;
             btnLuu.Location = new Point(971, 388);
@@ -155,7 +155,7 @@
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackgroundImage = LAB04.Properties.Resources.Gemini_Generated_Gif_52bpar52bpar52bp; BackgroundImageLayout = ImageLayout.Stretch;
+            BackgroundImage = Bai04.Properties.Resources.Gemini_Generated_Gif_52bpar52bpar52bp; BackgroundImageLayout = ImageLayout.Stretch;
             ClientSize = new Size(1138, 450);
             Controls.Add(btnLuu);
             Controls.Add(lvThongKe);
