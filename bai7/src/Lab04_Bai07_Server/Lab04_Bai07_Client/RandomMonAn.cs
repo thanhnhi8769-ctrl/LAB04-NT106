@@ -37,6 +37,21 @@ namespace Lab04_Bai07_Client
             {
                 if (!string.IsNullOrWhiteSpace(source))
                 {
+                    // 1. Nếu là URL đầy đủ (http/https) -> tải trực tiếp từ mạng
+                    if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                        source.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using var http = new HttpClient();
+                        byte[] bytes = await http.GetByteArrayAsync(source);
+                        if (!IsDisposed)
+                        {
+                            var ms = new MemoryStream(bytes);
+                            picAnhMonAn.Image = Image.FromStream(ms);
+                        }
+                        return;
+                    }
+
+                    // 2. Nếu có sẵn file trên máy cục bộ -> đọc từ ổ cứng
                     string localPath = File.Exists(source)
                         ? source
                         : Path.Combine(Application.StartupPath, source);
@@ -44,18 +59,26 @@ namespace Lab04_Bai07_Client
                     if (File.Exists(localPath))
                     {
                         byte[] bytes = await File.ReadAllBytesAsync(localPath);
-                        var ms = new MemoryStream(bytes);
-                        picAnhMonAn.Image = Image.FromStream(ms);
+                        if (!IsDisposed)
+                        {
+                            var ms = new MemoryStream(bytes);
+                            picAnhMonAn.Image = Image.FromStream(ms);
+                        }
                         return;
                     }
 
-                    if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                        source.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    // 3. Nếu không có trên máy Client -> tải qua endpoint /images/<tenfile> của Server
+                    string fileName = Path.GetFileName(source.Replace('\\', '/'));
+                    if (!string.IsNullOrWhiteSpace(fileName))
                     {
+                        string serverImageUrl = $"{ApiClient.BaseUrl.TrimEnd('/')}/images/{Uri.EscapeDataString(fileName)}";
                         using var http = new HttpClient();
-                        byte[] bytes = await http.GetByteArrayAsync(source);
-                        var ms = new MemoryStream(bytes);
-                        picAnhMonAn.Image = Image.FromStream(ms);
+                        byte[] bytes = await http.GetByteArrayAsync(serverImageUrl);
+                        if (!IsDisposed)
+                        {
+                            var ms = new MemoryStream(bytes);
+                            picAnhMonAn.Image = Image.FromStream(ms);
+                        }
                         return;
                     }
                 }
@@ -63,6 +86,8 @@ namespace Lab04_Bai07_Client
             catch
             {
             }
+
+            if (IsDisposed) return;
 
             int w = Math.Max(1, picAnhMonAn.Width);
             int h = Math.Max(1, picAnhMonAn.Height);
