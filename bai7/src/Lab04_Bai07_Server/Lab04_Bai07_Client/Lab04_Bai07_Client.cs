@@ -82,6 +82,22 @@ namespace Lab04_Bai07_Client
 
         private async void HomNayAnGi_Load(object? sender, EventArgs e)
         {
+            string inputUrl = Microsoft.VisualBasic.Interaction.InputBox(
+                "Nhập địa chỉ Server (để nguyên nếu chạy trên chính máy Server):\nVí dụ: https://xxxx.trycloudflare.com",
+                "Cấu hình kết nối Server",
+                ApiClient.BaseUrl
+            );
+
+            if (!string.IsNullOrWhiteSpace(inputUrl) && !ApiClient.SetBaseUrl(inputUrl))
+            {
+                MessageBox.Show(
+                    "Địa chỉ Server không hợp lệ, đang dùng mặc định: " + ApiClient.BaseUrl,
+                    "Cảnh báo",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+
             var tab = GetParentTabControl();
             if (tab != null)
             {
@@ -202,7 +218,7 @@ namespace Lab04_Bai07_Client
                 targetPanel.Controls.Clear();
                 targetPanel.Controls.Add(new Label
                 {
-                    Text = "Chưa kết nối được API Server (http://localhost:8080).\nChi tiết: " + ex.Message,
+                    Text = $"Chưa kết nối được API Server ({ApiClient.BaseUrl.TrimEnd('/')}).\nChi tiết: " + ex.Message,
                     AutoSize = true,
                     Padding = new Padding(12),
                     ForeColor = Color.Firebrick,

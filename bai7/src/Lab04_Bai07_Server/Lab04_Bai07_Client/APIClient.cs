@@ -52,12 +52,40 @@ namespace Lab04_Bai07_Client
 
     public static class ApiClient
     {
-        private static readonly HttpClient Client = new HttpClient
+        public static string BaseUrl { get; private set; } = "http://localhost:8080/";
+
+        private static HttpClient Client = CreateHttpClient(BaseUrl);
+
+        private static HttpClient CreateHttpClient(string url)
         {
-            BaseAddress = new Uri("http://+:8080/"),
-            Timeout = TimeSpan.FromSeconds(10)
-        };
-        public static string BaseUrl { get; private set; } = "https://possibilities-der-redhead-accessing.trycloudflare.com/";
+            if (!url.EndsWith("/")) url += "/";
+            return new HttpClient
+            {
+                BaseAddress = new Uri(url),
+                Timeout = TimeSpan.FromSeconds(15)
+            };
+        }
+
+        public static bool SetBaseUrl(string url)
+        {
+            url = (url ?? "").Trim();
+            if (string.IsNullOrEmpty(url)) return false;
+
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                url = "https://" + url;
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? parsedUri))
+                return false;
+
+            BaseUrl = parsedUri.ToString();
+            Client = CreateHttpClient(BaseUrl);
+            AttachToken();
+            return true;
+        }
+
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
