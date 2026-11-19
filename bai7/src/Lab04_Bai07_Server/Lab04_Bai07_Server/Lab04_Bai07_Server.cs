@@ -646,7 +646,7 @@ namespace Lab04_Bai07_Server
             {
                 InitDatabase();
                 _listener = new HttpListener();
-                _listener.Prefixes.Add("http://localhost:8080/");
+                _listener.Prefixes.Add("http://+:8080/");
                 _listener.Start();
                 SetServerRunningState(true);
                 _ = Task.Run(() => ListenLoopAsync(_listener));
