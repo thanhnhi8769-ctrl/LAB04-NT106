@@ -54,10 +54,10 @@ namespace Lab04_Bai07_Client
     {
         private static readonly HttpClient Client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:8080/"),
+            BaseAddress = new Uri("http://+:8080/"),
             Timeout = TimeSpan.FromSeconds(10)
         };
-
+        public static string BaseUrl { get; private set; } = "https://possibilities-der-redhead-accessing.trycloudflare.com/";
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
