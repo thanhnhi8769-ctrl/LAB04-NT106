@@ -103,26 +103,24 @@ namespace Lab04_Bai07_Server
             EnsureDefaultUser(conn, "baonv", "123456", "Bảo", "Nguyễn");
             EnsureDefaultUser(conn, "phatpt", "123456", "Phát", "Phạm");
 
-            string imgDir = ResolveImagesDirectory();
-
             using (var updateCreatorCmd = conn.CreateCommand())
             {
                 updateCreatorCmd.CommandText = @"
                     UPDATE MonAn
                     SET NguoiDongGop = 'Quản lí'
-                    WHERE NguoiDongGop IN ('baonv', 'phatpt', '') OR NguoiDongGop IS NULL;";
+                    WHERE NguoiDongGop IN ('baonv', 'phatpt', 'Quản lí quán', '') OR NguoiDongGop IS NULL;";
                 updateCreatorCmd.ExecuteNonQuery();
             }
 
             RemoveDuplicateMonAn(conn);
 
-            EnsureDefaultMonAn(conn, "Bún Bò Huế", 35000, "123 - ABC - DEF", Path.Combine(imgDir, "bunbo.png"), "Đậm đà hương vị Huế");
-            EnsureDefaultMonAn(conn, "Bánh mì", 25000, "123 - ABC - DEF", Path.Combine(imgDir, "banhmi.png"), "Bánh mì giòn rụm");
-            EnsureDefaultMonAn(conn, "Phở", 40000, "345 - ABC - DEF", Path.Combine(imgDir, "pho.png"), "Phở bò tái nạm");
-            EnsureDefaultMonAn(conn, "Cơm tấm", 40000, "Cơm tấm - ABC - DEF", Path.Combine(imgDir, "comtam.png"), "Sườn bì chả");
-            EnsureDefaultMonAn(conn, "Hủ tiếu", 30000, "Hủ tiếu - ABC - DEF", Path.Combine(imgDir, "hutieu.png"), "Hủ tiếu Nam Vang");
-            EnsureDefaultMonAn(conn, "Bún chả", 45000, "456 - ABC - DEF", Path.Combine(imgDir, "buncha.png"), "Bún chả nướng thơm lừng");
-            EnsureDefaultMonAn(conn, "Mì quảng", 40000, "789 - ABC - DEF", Path.Combine(imgDir, "miquang.png"), "Mì quảng đậm đà");
+            EnsureDefaultMonAn(conn, "Bún Bò Huế", 35000, "123 - ABC - DEF", "images/bunbo.png", "Đậm đà hương vị Huế");
+            EnsureDefaultMonAn(conn, "Bánh mì", 25000, "123 - ABC - DEF", "images/banhmi.png", "Bánh mì giòn rụm");
+            EnsureDefaultMonAn(conn, "Phở", 40000, "345 - ABC - DEF", "images/pho.png", "Phở bò tái nạm");
+            EnsureDefaultMonAn(conn, "Cơm tấm", 40000, "Cơm tấm - ABC - DEF", "images/comtam.png", "Sườn bì chả");
+            EnsureDefaultMonAn(conn, "Hủ tiếu", 30000, "Hủ tiếu - ABC - DEF", "images/hutieu.png", "Hủ tiếu Nam Vang");
+            EnsureDefaultMonAn(conn, "Bún chả", 45000, "456 - ABC - DEF", "images/buncha.png", "Bún chả nướng thơm lừng");
+            EnsureDefaultMonAn(conn, "Mì quảng", 40000, "789 - ABC - DEF", "images/miquang.png", "Mì quảng đậm đà");
         }
 
         private static void RemoveDuplicateMonAn(SqliteConnection conn)
@@ -154,7 +152,7 @@ namespace Lab04_Bai07_Server
             }
         }
 
-        private static void EnsureDefaultMonAn(SqliteConnection conn, string tenMon, int gia, string diaChi, string imagePath, string moTa)
+        private static void EnsureDefaultMonAn(SqliteConnection conn, string tenMon, int gia, string diaChi, string relativeImagePath, string moTa)
         {
             int existingId = -1;
             string currentImg = "";
@@ -177,11 +175,11 @@ namespace Lab04_Bai07_Server
 
             if (existingId != -1)
             {
-                if (string.IsNullOrEmpty(currentImg) || !File.Exists(currentImg))
+                if (string.IsNullOrEmpty(currentImg) || currentImg.Contains(@":\") || currentImg.Contains('\\'))
                 {
                     using var updCmd = conn.CreateCommand();
                     updCmd.CommandText = "UPDATE MonAn SET HinhAnh = $img WHERE Id = $id;";
-                    updCmd.Parameters.AddWithValue("$img", imagePath);
+                    updCmd.Parameters.AddWithValue("$img", relativeImagePath);
                     updCmd.Parameters.AddWithValue("$id", existingId);
                     updCmd.ExecuteNonQuery();
                 }
@@ -195,7 +193,7 @@ namespace Lab04_Bai07_Server
                 insCmd.Parameters.AddWithValue("$ten", tenMon);
                 insCmd.Parameters.AddWithValue("$gia", gia);
                 insCmd.Parameters.AddWithValue("$dc", diaChi);
-                insCmd.Parameters.AddWithValue("$img", imagePath);
+                insCmd.Parameters.AddWithValue("$img", relativeImagePath);
                 insCmd.Parameters.AddWithValue("$mota", moTa);
                 insCmd.ExecuteNonQuery();
             }
@@ -255,7 +253,9 @@ namespace Lab04_Bai07_Server
 
             try
             {
-                if (method == "POST" && path == "/api/signup")
+                if (method == "GET" && path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase))
+                    await HandleGetImageAsync(req, res);
+                else if (method == "POST" && path == "/api/signup")
                     await HandleSignupAsync(req, res);
                 else if (method == "POST" && path == "/api/login")
                     await HandleLoginAsync(req, res);
@@ -282,6 +282,34 @@ namespace Lab04_Bai07_Server
             {
                 try { res.OutputStream.Close(); } catch { }
             }
+        }
+
+        private static async Task HandleGetImageAsync(HttpListenerRequest req, HttpListenerResponse res)
+        {
+            string rawPath = req.Url?.AbsolutePath ?? "";
+            string fileName = Path.GetFileName(Uri.UnescapeDataString(rawPath));
+            string fullPath = Path.Combine(ResolveImagesDirectory(), fileName);
+
+            if (string.IsNullOrWhiteSpace(fileName) || !File.Exists(fullPath))
+            {
+                res.StatusCode = 404;
+                await WriteJsonAsync(res, new { message = "Không tìm thấy ảnh." });
+                return;
+            }
+
+            string ext = Path.GetExtension(fullPath).ToLowerInvariant();
+            res.ContentType = ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                _ => "image/png"
+            };
+
+            byte[] bytes = await File.ReadAllBytesAsync(fullPath);
+            res.ContentLength64 = bytes.Length;
+            await res.OutputStream.WriteAsync(bytes, 0, bytes.Length);
         }
 
         private static async Task HandleSignupAsync(HttpListenerRequest req, HttpListenerResponse res)
@@ -646,7 +674,7 @@ namespace Lab04_Bai07_Server
             {
                 InitDatabase();
                 _listener = new HttpListener();
-                _listener.Prefixes.Add("http://localhost:8080/");
+                _listener.Prefixes.Add("http://+:8080/");
                 _listener.Start();
                 SetServerRunningState(true);
                 _ = Task.Run(() => ListenLoopAsync(_listener));
