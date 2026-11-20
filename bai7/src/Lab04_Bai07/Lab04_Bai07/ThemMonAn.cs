@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public partial class ThemMonAn : Form
     {
@@ -13,6 +13,9 @@ namespace Lab04_Bai07_Client
         public ThemMonAn()
         {
             InitializeComponent();
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.StartPosition = FormStartPosition.CenterParent;
             EnsureActionControls();
         }
 

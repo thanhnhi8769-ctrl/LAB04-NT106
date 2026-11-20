@@ -1,4 +1,4 @@
-﻿namespace Lab04_Bai07_Client
+﻿namespace Lab04_Bai07
 {
     partial class MonAnCard
     {

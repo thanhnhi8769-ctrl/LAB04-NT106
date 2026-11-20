@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public partial class SignupForm : Form
     {
         public SignupForm()
         {
             InitializeComponent();
-
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.StartPosition = FormStartPosition.CenterParent;
             txtPassword.UseSystemPasswordChar = true;
 
             if (comboBox1.Items.Count == 0)

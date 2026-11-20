@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public partial class RandomMonAn : Form
     {
@@ -14,6 +14,9 @@ namespace Lab04_Bai07_Client
         public RandomMonAn()
         {
             InitializeComponent();
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.StartPosition = FormStartPosition.CenterParent;
             picAnhMonAn.SizeMode = PictureBoxSizeMode.Zoom;
         }
 

@@ -1,35 +1,139 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using Microsoft.Data.Sqlite;
 
-namespace Lab04_Bai07_Server
-{
-    public partial class Form1 : Form
+namespace Lab04_Bai07{
+    public static class EmbeddedApiServer
     {
         private static readonly string DbPath = Path.Combine(AppContext.BaseDirectory, "homnayangi.db");
         private static readonly string ConnectionString = $"Data Source={DbPath}";
         private static readonly ConcurrentDictionary<string, string> ActiveTokens = new();
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-        private HttpListener? _listener;
-        private bool _serverStarted = false;
+        private static HttpListener? _listener;
+        private static Process? _cloudflaredProcess;
+        public static bool IsHostingLocally { get; private set; } = false;
 
-        public Form1()
+        public static bool TryStartBackgroundServer()
         {
-            InitializeComponent();
-            this.Load += Form1_Load;
-            this.FormClosing += Form1_FormClosing;
+            if (IsHostingLocally) return true;
+
+            try
+            {
+                InitDatabase();
+                _listener = new HttpListener();
+                _listener.Prefixes.Add("http://+:8080/");
+                _listener.Start();
+
+                IsHostingLocally = true;
+                _ = Task.Run(() => ListenLoopAsync(_listener));
+                StartCloudflareAndPublishUrl();
+                return true;
+            }
+            catch
+            {
+                // Nếu máy chạy không có quyền Admin hoặc cổng 8080 đã có Server khác chiếm,
+                // bỏ qua êm ái để máy này hoạt động như một Client thuần túy.
+                IsHostingLocally = false;
+                try { _listener?.Close(); } catch { }
+                return false;
+            }
         }
 
-        private async Task ListenLoopAsync(HttpListener listener)
+        public static void StopServer()
+        {
+            IsHostingLocally = false;
+            try { _listener?.Stop(); _listener?.Close(); } catch { }
+            try { if (_cloudflaredProcess != null && !_cloudflaredProcess.HasExited) _cloudflaredProcess.Kill(); } catch { }
+        }
+
+        private static void StartCloudflareAndPublishUrl()
+        {
+            string cloudflaredPath = @"C:\Program Files (x86)\cloudflared\cloudflared.exe";
+            if (!File.Exists(cloudflaredPath))
+            {
+                cloudflaredPath = "cloudflared";
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = cloudflaredPath,
+                Arguments = "tunnel --url http://localhost:8080",
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+
+            _cloudflaredProcess = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            bool urlPublished = false;
+
+            _cloudflaredProcess.ErrorDataReceived += async (s, e) =>
+            {
+                if (string.IsNullOrEmpty(e.Data) || urlPublished) return;
+
+                var match = Regex.Match(e.Data, @"https://[a-zA-Z0-9-]+\.trycloudflare\.com");
+                if (match.Success)
+                {
+                    urlPublished = true;
+                    await PushUrlToGitHubAsync(match.Value);
+                }
+            };
+
+            try
+            {
+                _cloudflaredProcess.Start();
+                _cloudflaredProcess.BeginErrorReadLine();
+            }
+            catch { }
+        }
+
+        private static async Task PushUrlToGitHubAsync(string tunnelUrl)
+        {
+            try
+            {
+                DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
+                while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
+                {
+                    dir = dir.Parent;
+                }
+                if (dir == null) return;
+
+                string repoRoot = dir.FullName;
+                string urlFile = Path.Combine(repoRoot, "server_url.txt");
+                await File.WriteAllTextAsync(urlFile, tunnelUrl.Trim());
+
+                await RunGitCommandAsync(repoRoot, "add server_url.txt");
+                await RunGitCommandAsync(repoRoot, $"commit -m \"Update server URL: {tunnelUrl}\"");
+                await RunGitCommandAsync(repoRoot, "push origin main");
+            }
+            catch { }
+        }
+
+        private static async Task RunGitCommandAsync(string workingDir, string arguments)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = workingDir,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc != null) await proc.WaitForExitAsync();
+        }
+
+        private static async Task ListenLoopAsync(HttpListener listener)
         {
             while (listener.IsListening)
             {
@@ -38,10 +142,7 @@ namespace Lab04_Bai07_Server
                     var context = await listener.GetContextAsync();
                     _ = Task.Run(() => HandleRequestAsync(context));
                 }
-                catch (HttpListenerException)
-                {
-                    break;
-                }
+                catch (HttpListenerException) { break; }
                 catch { }
             }
         }
@@ -52,20 +153,15 @@ namespace Lab04_Bai07_Server
             [
                 Path.Combine(AppContext.BaseDirectory, "images"),
                 Path.Combine(AppContext.BaseDirectory, "Images"),
-                @"C:\C#\NT106\LAB04-NT106\bai7\images",
                 Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\images")),
                 Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\..\images"))
             ];
 
             foreach (string path in candidates)
             {
-                if (Directory.Exists(path))
-                {
-                    return path;
-                }
+                if (Directory.Exists(path)) return path;
             }
-
-            return @"C:\C#\NT106\LAB04-NT106\bai7\images";
+            return Path.Combine(AppContext.BaseDirectory, "images");
         }
 
         private static void InitDatabase()
@@ -87,7 +183,6 @@ namespace Lab04_Bai07_Server
                         Language TEXT,
                         Sex TEXT
                     );
-
                     CREATE TABLE IF NOT EXISTS MonAn (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         TenMonAn TEXT NOT NULL,
@@ -103,17 +198,6 @@ namespace Lab04_Bai07_Server
             EnsureDefaultUser(conn, "baonv", "123456", "Bảo", "Nguyễn");
             EnsureDefaultUser(conn, "phatpt", "123456", "Phát", "Phạm");
 
-            using (var updateCreatorCmd = conn.CreateCommand())
-            {
-                updateCreatorCmd.CommandText = @"
-                    UPDATE MonAn
-                    SET NguoiDongGop = 'Quản lí'
-                    WHERE NguoiDongGop IN ('baonv', 'phatpt', 'Quản lí quán', '') OR NguoiDongGop IS NULL;";
-                updateCreatorCmd.ExecuteNonQuery();
-            }
-
-            RemoveDuplicateMonAn(conn);
-
             EnsureDefaultMonAn(conn, "Bún Bò Huế", 35000, "123 - ABC - DEF", "images/bunbo.png", "Đậm đà hương vị Huế");
             EnsureDefaultMonAn(conn, "Bánh mì", 25000, "123 - ABC - DEF", "images/banhmi.png", "Bánh mì giòn rụm");
             EnsureDefaultMonAn(conn, "Phở", 40000, "345 - ABC - DEF", "images/pho.png", "Phở bò tái nạm");
@@ -123,80 +207,23 @@ namespace Lab04_Bai07_Server
             EnsureDefaultMonAn(conn, "Mì quảng", 40000, "789 - ABC - DEF", "images/miquang.png", "Mì quảng đậm đà");
         }
 
-        private static void RemoveDuplicateMonAn(SqliteConnection conn)
-        {
-            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var duplicateIds = new List<int>();
-
-            using (var selectCmd = conn.CreateCommand())
-            {
-                selectCmd.CommandText = "SELECT Id, TenMonAn FROM MonAn ORDER BY Id ASC;";
-                using var rd = selectCmd.ExecuteReader();
-                while (rd.Read())
-                {
-                    int id = rd.GetInt32(0);
-                    string name = (rd.IsDBNull(1) ? "" : rd.GetString(1)).Trim();
-                    if (!seenNames.Add(name))
-                    {
-                        duplicateIds.Add(id);
-                    }
-                }
-            }
-
-            foreach (int dupId in duplicateIds)
-            {
-                using var delCmd = conn.CreateCommand();
-                delCmd.CommandText = "DELETE FROM MonAn WHERE Id = $id;";
-                delCmd.Parameters.AddWithValue("$id", dupId);
-                delCmd.ExecuteNonQuery();
-            }
-        }
-
         private static void EnsureDefaultMonAn(SqliteConnection conn, string tenMon, int gia, string diaChi, string relativeImagePath, string moTa)
         {
-            int existingId = -1;
-            string currentImg = "";
+            using var findCmd = conn.CreateCommand();
+            findCmd.CommandText = "SELECT COUNT(*) FROM MonAn WHERE LOWER(TRIM(TenMonAn)) = LOWER(TRIM($ten));";
+            findCmd.Parameters.AddWithValue("$ten", tenMon);
+            if (Convert.ToInt64(findCmd.ExecuteScalar() ?? 0) > 0) return;
 
-            using (var findCmd = conn.CreateCommand())
-            {
-                findCmd.CommandText = "SELECT Id, TenMonAn, HinhAnh FROM MonAn;";
-                using var rd = findCmd.ExecuteReader();
-                while (rd.Read())
-                {
-                    string dbName = (rd.IsDBNull(1) ? "" : rd.GetString(1)).Trim();
-                    if (string.Equals(dbName, tenMon.Trim(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        existingId = rd.GetInt32(0);
-                        currentImg = (rd.IsDBNull(2) ? "" : rd.GetString(2)).Trim();
-                        break;
-                    }
-                }
-            }
-
-            if (existingId != -1)
-            {
-                if (string.IsNullOrEmpty(currentImg) || currentImg.Contains(@":\") || currentImg.Contains('\\'))
-                {
-                    using var updCmd = conn.CreateCommand();
-                    updCmd.CommandText = "UPDATE MonAn SET HinhAnh = $img WHERE Id = $id;";
-                    updCmd.Parameters.AddWithValue("$img", relativeImagePath);
-                    updCmd.Parameters.AddWithValue("$id", existingId);
-                    updCmd.ExecuteNonQuery();
-                }
-            }
-            else
-            {
-                using var insCmd = conn.CreateCommand();
-                insCmd.CommandText = @"
-                    INSERT INTO MonAn (TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop)
-                    VALUES ($ten, $gia, $dc, $img, $mota, 'Quản lí');";
-                insCmd.Parameters.AddWithValue("$ten", tenMon);
-                insCmd.Parameters.AddWithValue("$gia", gia);
-                insCmd.Parameters.AddWithValue("$dc", diaChi);
-                insCmd.Parameters.AddWithValue("$img", relativeImagePath);
-                insCmd.Parameters.AddWithValue("$mota", moTa);
-                insCmd.ExecuteNonQuery();
-            }
+            using var insCmd = conn.CreateCommand();
+            insCmd.CommandText = @"
+                INSERT INTO MonAn (TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop)
+                VALUES ($ten, $gia, $dc, $img, $mota, 'Quản lí');";
+            insCmd.Parameters.AddWithValue("$ten", tenMon);
+            insCmd.Parameters.AddWithValue("$gia", gia);
+            insCmd.Parameters.AddWithValue("$dc", diaChi);
+            insCmd.Parameters.AddWithValue("$img", relativeImagePath);
+            insCmd.Parameters.AddWithValue("$mota", moTa);
+            insCmd.ExecuteNonQuery();
         }
 
         private static void EnsureDefaultUser(SqliteConnection conn, string username, string password, string firstname, string lastname)
@@ -204,39 +231,31 @@ namespace Lab04_Bai07_Server
             using var checkCmd = conn.CreateCommand();
             checkCmd.CommandText = "SELECT COUNT(*) FROM Users WHERE Username = $u;";
             checkCmd.Parameters.AddWithValue("$u", username);
-            long exists = Convert.ToInt64(checkCmd.ExecuteScalar() ?? 0);
+            if (Convert.ToInt64(checkCmd.ExecuteScalar() ?? 0) > 0) return;
 
-            if (exists == 0)
-            {
-                using var insCmd = conn.CreateCommand();
-                insCmd.CommandText = @"
-                    INSERT INTO Users (Username, PasswordHash, Email, Firstname, Lastname, Phone, Birthday, Language, Sex)
-                    VALUES ($u, $p, $e, $f, $l, '', '2005-01-01', 'vi', 'Male');";
-                insCmd.Parameters.AddWithValue("$u", username);
-                insCmd.Parameters.AddWithValue("$p", HashPassword(password));
-                insCmd.Parameters.AddWithValue("$e", $"{username}@uit.edu.vn");
-                insCmd.Parameters.AddWithValue("$f", firstname);
-                insCmd.Parameters.AddWithValue("$l", lastname);
-                insCmd.ExecuteNonQuery();
-            }
+            using var insCmd = conn.CreateCommand();
+            insCmd.CommandText = @"
+                INSERT INTO Users (Username, PasswordHash, Email, Firstname, Lastname, Phone, Birthday, Language, Sex)
+                VALUES ($u, $p, $e, $f, $l, '', '2005-01-01', 'vi', 'Male');";
+            insCmd.Parameters.AddWithValue("$u", username);
+            insCmd.Parameters.AddWithValue("$p", HashPassword(password));
+            insCmd.Parameters.AddWithValue("$e", $"{username}@uit.edu.vn");
+            insCmd.Parameters.AddWithValue("$f", firstname);
+            insCmd.Parameters.AddWithValue("$l", lastname);
+            insCmd.ExecuteNonQuery();
         }
 
         private static string HashPassword(string password)
         {
-            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-            return Convert.ToHexString(bytes);
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
         }
 
         private static string? GetAuthenticatedUsername(HttpListenerRequest req)
         {
             string? auth = req.Headers["Authorization"];
             if (string.IsNullOrWhiteSpace(auth)) return null;
-
             const string prefix = "Bearer ";
-            string token = auth.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                ? auth[prefix.Length..].Trim()
-                : auth.Trim();
-
+            string token = auth.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? auth[prefix.Length..].Trim() : auth.Trim();
             return ActiveTokens.TryGetValue(token, out string? username) ? username : null;
         }
 
@@ -244,7 +263,6 @@ namespace Lab04_Bai07_Server
         {
             var req = context.Request;
             var res = context.Response;
-
             res.ContentEncoding = Encoding.UTF8;
             res.ContentType = "application/json; charset=utf-8";
 
@@ -286,8 +304,7 @@ namespace Lab04_Bai07_Server
 
         private static async Task HandleGetImageAsync(HttpListenerRequest req, HttpListenerResponse res)
         {
-            string rawPath = req.Url?.AbsolutePath ?? "";
-            string fileName = Path.GetFileName(Uri.UnescapeDataString(rawPath));
+            string fileName = Path.GetFileName(Uri.UnescapeDataString(req.Url?.AbsolutePath ?? ""));
             string fullPath = Path.Combine(ResolveImagesDirectory(), fileName);
 
             if (string.IsNullOrWhiteSpace(fileName) || !File.Exists(fullPath))
@@ -315,8 +332,7 @@ namespace Lab04_Bai07_Server
         private static async Task HandleSignupAsync(HttpListenerRequest req, HttpListenerResponse res)
         {
             using var reader = new StreamReader(req.InputStream, req.ContentEncoding);
-            string body = await reader.ReadToEndAsync();
-            var dto = JsonSerializer.Deserialize<SignupDto>(body, JsonOptions);
+            var dto = JsonSerializer.Deserialize<SignupDto>(await reader.ReadToEndAsync(), JsonOptions);
 
             if (dto == null || string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
             {
@@ -364,8 +380,7 @@ namespace Lab04_Bai07_Server
         private static async Task HandleLoginAsync(HttpListenerRequest req, HttpListenerResponse res)
         {
             using var reader = new StreamReader(req.InputStream, req.ContentEncoding);
-            string body = await reader.ReadToEndAsync();
-            var dto = JsonSerializer.Deserialize<LoginDto>(body, JsonOptions);
+            var dto = JsonSerializer.Deserialize<LoginDto>(await reader.ReadToEndAsync(), JsonOptions);
 
             if (dto == null || string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
             {
@@ -488,8 +503,7 @@ namespace Lab04_Bai07_Server
             }
 
             using var reader = new StreamReader(req.InputStream, req.ContentEncoding);
-            string body = await reader.ReadToEndAsync();
-            var dto = JsonSerializer.Deserialize<MonAnRecord>(body, JsonOptions);
+            var dto = JsonSerializer.Deserialize<MonAnRecord>(await reader.ReadToEndAsync(), JsonOptions);
 
             if (dto == null || string.IsNullOrWhiteSpace(dto.TenMonAn))
             {
@@ -498,32 +512,14 @@ namespace Lab04_Bai07_Server
                 return;
             }
 
-            string tenMon = dto.TenMonAn.Trim();
-
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
-
-            using (var checkCmd = conn.CreateCommand())
-            {
-                checkCmd.CommandText = "SELECT TenMonAn FROM MonAn;";
-                using var rd = checkCmd.ExecuteReader();
-                while (rd.Read())
-                {
-                    string existingName = (rd.IsDBNull(0) ? "" : rd.GetString(0)).Trim();
-                    if (string.Equals(existingName, tenMon, StringComparison.OrdinalIgnoreCase))
-                    {
-                        res.StatusCode = 409;
-                        await WriteJsonAsync(res, new { message = $"Món '{tenMon}' đã có trong danh sách, không thể thêm trùng!" });
-                        return;
-                    }
-                }
-            }
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO MonAn (TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop)
                 VALUES ($ten, $gia, $dc, $img, $mota, $user);";
-            cmd.Parameters.AddWithValue("$ten", tenMon);
+            cmd.Parameters.AddWithValue("$ten", dto.TenMonAn.Trim());
             cmd.Parameters.AddWithValue("$gia", dto.Gia);
             cmd.Parameters.AddWithValue("$dc", dto.DiaChi.Trim());
             cmd.Parameters.AddWithValue("$img", dto.HinhAnh.Trim());
@@ -558,12 +554,7 @@ namespace Lab04_Bai07_Server
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM MonAn WHERE Id = $id;";
             cmd.Parameters.AddWithValue("$id", id);
-            if (cmd.ExecuteNonQuery() == 0)
-            {
-                res.StatusCode = 404;
-                await WriteJsonAsync(res, new { message = "Không tìm thấy món ăn cần xoá." });
-                return;
-            }
+            cmd.ExecuteNonQuery();
 
             res.StatusCode = 200;
             await WriteJsonAsync(res, new { message = "Đã xoá món ăn thành công!" });
@@ -591,16 +582,12 @@ namespace Lab04_Bai07_Server
             using var cmd = conn.CreateCommand();
             if (type == "mine")
             {
-                cmd.CommandText = @"
-                    SELECT Id, TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop
-                    FROM MonAn WHERE NguoiDongGop = $u ORDER BY RANDOM() LIMIT 1;";
+                cmd.CommandText = "SELECT Id, TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop FROM MonAn WHERE NguoiDongGop = $u ORDER BY RANDOM() LIMIT 1;";
                 cmd.Parameters.AddWithValue("$u", username);
             }
             else
             {
-                cmd.CommandText = @"
-                    SELECT Id, TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop
-                    FROM MonAn ORDER BY RANDOM() LIMIT 1;";
+                cmd.CommandText = "SELECT Id, TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop FROM MonAn ORDER BY RANDOM() LIMIT 1;";
             }
 
             using var rd = cmd.ExecuteReader();
@@ -628,82 +615,11 @@ namespace Lab04_Bai07_Server
 
         private static async Task WriteJsonAsync(HttpListenerResponse res, object payload)
         {
-            string json = JsonSerializer.Serialize(payload);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload));
             res.ContentLength64 = bytes.Length;
             await res.OutputStream.WriteAsync(bytes, 0, bytes.Length);
         }
-
-        private void lblHOMNAYANGI_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void SetServerRunningState(bool isRunning)
-        {
-            if (InvokeRequired)
-            {
-                Invoke(() => SetServerRunningState(isRunning));
-                return;
-            }
-
-            progressBar.Visible = true;
-            if (isRunning)
-            {
-                progressBar.Style = ProgressBarStyle.Marquee;
-                progressBar.MarqueeAnimationSpeed = 30;
-            }
-            else
-            {
-                progressBar.Style = ProgressBarStyle.Blocks;
-                progressBar.MarqueeAnimationSpeed = 0;
-                progressBar.Value = 0;
-            }
-        }
-
-        private void progressBar_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void Form1_Load(object? sender, EventArgs e)
-        {
-            if (_serverStarted) return;
-            _serverStarted = true;
-            SetServerRunningState(false);
-
-            try
-            {
-                InitDatabase();
-                _listener = new HttpListener();
-                _listener.Prefixes.Add("http://+:8080/");
-                _listener.Start();
-                SetServerRunningState(true);
-                _ = Task.Run(() => ListenLoopAsync(_listener));
-            }
-            catch (Exception ex)
-            {
-                SetServerRunningState(false);
-                MessageBox.Show(
-                    "Không thể khởi động API Server tại http://localhost:8080/\n" +
-                    "Gợi ý: Mở Visual Studio bằng Run as administrator hoặc kiểm tra cổng 8080.\n\nChi tiết: " + ex.Message,
-                    "Lỗi khởi động Server",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
-            }
-        }
-
-        private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
-        {
-            SetServerRunningState(false);
-            try
-            {
-                _listener?.Stop();
-                _listener?.Close();
-            }
-            catch { }
-        }
     }
-
     public class SignupDto
     {
         public string Username { get; set; } = "";
@@ -714,7 +630,7 @@ namespace Lab04_Bai07_Server
         public string Phone { get; set; } = "";
         public string Birthday { get; set; } = "";
         public string Language { get; set; } = "vi";
-        public string Sex { get; set; } = "Male";
+        public string Sex { get; set; } = "";
     }
 
     public class LoginDto

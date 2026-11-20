@@ -1,7 +1,8 @@
+using Lab04_Bai07;
 using System;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Server
+namespace Lab04_Bai07
 {
     internal static class Program
     {
@@ -10,7 +11,11 @@ namespace Lab04_Bai07_Server
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+
+            EmbeddedApiServer.TryStartBackgroundServer();
+
+            Application.ApplicationExit += (s, e) => EmbeddedApiServer.StopServer();
+            Application.Run(new HomNayAnGi());
         }
     }
 }

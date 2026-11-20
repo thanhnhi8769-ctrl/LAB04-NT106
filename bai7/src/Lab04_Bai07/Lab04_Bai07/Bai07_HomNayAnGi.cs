@@ -1,9 +1,10 @@
+using Lab04_Bai07;
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public partial class HomNayAnGi : Form
     {
@@ -14,6 +15,9 @@ namespace Lab04_Bai07_Client
         {
             InitializeComponent();
 
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.StartPosition = FormStartPosition.CenterScreen;
             ConfigureFlowLayout(flpAll);
             ConfigureFlowLayout(flpMine);
 
@@ -36,6 +40,8 @@ namespace Lab04_Bai07_Client
                 cboPageSize.SelectedIndex = 0;
             }
             isUpdatingPagination = false;
+            cboPageSize.SelectedIndexChanged -= cboPageSize_SelectedIndexChanged;
+            cboPageSize.SelectedIndexChanged += cboPageSize_SelectedIndexChanged;
 
             this.Load += HomNayAnGi_Load;
         }
@@ -82,20 +88,24 @@ namespace Lab04_Bai07_Client
 
         private async void HomNayAnGi_Load(object? sender, EventArgs e)
         {
-            string inputUrl = Microsoft.VisualBasic.Interaction.InputBox(
-                "Nhập địa chỉ Server (để nguyên nếu chạy trên chính máy Server):\nVí dụ: https://xxxx.trycloudflare.com",
-                "Cấu hình kết nối Server",
-                ApiClient.BaseUrl
-            );
-
-            if (!string.IsNullOrWhiteSpace(inputUrl) && !ApiClient.SetBaseUrl(inputUrl))
+            if (EmbeddedApiServer.IsHostingLocally)
             {
-                MessageBox.Show(
-                    "Địa chỉ Server không hợp lệ, đang dùng mặc định: " + ApiClient.BaseUrl,
-                    "Cảnh báo",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
+                // Máy này đang chạy Server -> trỏ thẳng vào localhost:8080
+                ApiClient.SetBaseUrl("http://localhost:8080/");
+            }
+            else
+            {
+                // Máy này là Client -> tự động tải link Cloudflare mới nhất từ GitHub
+                bool loaded = await ApiClient.LoadServerUrlFromGitHubAsync();
+                if (!loaded)
+                {
+                    string inputUrl = Microsoft.VisualBasic.Interaction.InputBox(
+                        "Không lấy được link tự động. Nhập địa chỉ Server:",
+                        "Cấu hình kết nối Server",
+                        ApiClient.BaseUrl
+                    );
+                    if (!string.IsNullOrWhiteSpace(inputUrl)) ApiClient.SetBaseUrl(inputUrl);
+                }
             }
 
             var tab = GetParentTabControl();

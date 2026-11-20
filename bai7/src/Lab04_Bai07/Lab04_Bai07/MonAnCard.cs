@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public partial class MonAnCard : UserControl
     {
@@ -15,7 +16,8 @@ namespace Lab04_Bai07_Client
         public MonAnCard()
         {
             InitializeComponent();
-            picAnhMonAn.SizeMode = PictureBoxSizeMode.Zoom;
+            picAnhMonAn.SizeMode = PictureBoxSizeMode.StretchImage;
+            picAnhMonAn.BorderStyle = BorderStyle.None;
             this.Resize += MonAnCard_Resize;
             ApplyResponsiveLayout();
         }
@@ -31,14 +33,25 @@ namespace Lab04_Bai07_Client
             int h = this.ClientSize.Height;
             if (w <= 0 || h <= 0) return;
 
-            // 1. Khung vuông hiển thị ảnh món ăn bên trái
-            int picSize = Math.Max(64, (int)(h * 0.50));
-            int picX = (int)(w * 0.235);
-            int picY = (int)(h * 0.26);
+            // 1. Khung hiển thị ảnh món ăn nằm gọn bên trong viền khung gỗ
+            int picSize = Math.Max(60, (int)(h * 0.46));
+            int picX = (int)(w * 0.262);
+            int picY = (int)(h * 0.28);
             picAnhMonAn.SetBounds(picX, picY, picSize, picSize);
 
+            // Bo góc nhẹ 8px cho ảnh hòa vào khung gỗ
+            var path = new GraphicsPath();
+            int r = 8;
+            path.AddArc(0, 0, r, r, 180, 90);
+            path.AddArc(picSize - r, 0, r, r, 270, 90);
+            path.AddArc(picSize - r, picSize - r, r, r, 0, 90);
+            path.AddArc(0, picSize - r, r, r, 90, 90);
+            path.CloseFigure();
+            picAnhMonAn.Region?.Dispose();
+            picAnhMonAn.Region = new Region(path);
+
             // 2. Cột thông tin nằm gọn trong bảng gỗ
-            int infoLeft = picAnhMonAn.Right + 8;
+            int infoLeft = picAnhMonAn.Right + 10;
             int infoRight = (int)(w * 0.675);
             int infoWidth = Math.Max(100, infoRight - infoLeft);
 
@@ -58,7 +71,7 @@ namespace Lab04_Bai07_Client
                 rowGap
             );
 
-            // Dòng Đóng góp bởi (để AutoSize = true cho nhãn để không bao giờ bị cắt chữ "bởi")
+            // Dòng Đóng góp bởi
             lblDongGop.AutoSize = true;
             lblDongGop.Location = new Point(infoLeft, topY + rowGap * 2);
             txtDongGop.AutoSize = false;
@@ -120,8 +133,7 @@ namespace Lab04_Bai07_Client
                         return;
                     }
 
-                    // 3. Nếu không có trên máy Client (vd: "images/bunbo.png" hoặc đường dẫn cũ từ máy Server)
-                    // -> lấy tên file và tải qua endpoint /images/<tenfile> của Server
+                    // 3. Nếu không có trên máy Client -> lấy tên file và tải qua endpoint /images/<tenfile> của Server
                     string fileName = Path.GetFileName(source.Replace('\\', '/'));
                     if (!string.IsNullOrWhiteSpace(fileName))
                     {

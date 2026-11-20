@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Lab04_Bai07_Client
+namespace Lab04_Bai07
 {
     public class UserDto
     {
@@ -85,7 +85,21 @@ namespace Lab04_Bai07_Client
             AttachToken();
             return true;
         }
+        private const string GitHubRawUrl = "https://raw.githubusercontent.com/thanhnhi8769-ctrl/LAB04-NT106/main/server_url.txt";
 
+        public static async Task<bool> LoadServerUrlFromGitHubAsync()
+        {
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                string remoteUrl = await http.GetStringAsync($"{GitHubRawUrl}?t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                return SetBaseUrl(remoteUrl.Trim());
+            }
+            catch
+            {
+                return false;
+            }
+        }
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
