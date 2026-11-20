@@ -11,7 +11,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
-namespace Lab04_Bai07{
+namespace Lab04_Bai07
+{
     public static class EmbeddedApiServer
     {
         private static readonly string DbPath = Path.Combine(AppContext.BaseDirectory, "homnayangi.db");
@@ -22,6 +23,14 @@ namespace Lab04_Bai07{
         private static HttpListener? _listener;
         private static Process? _cloudflaredProcess;
         public static bool IsHostingLocally { get; private set; } = false;
+
+        // Phiên bản dữ liệu để đồng bộ tự động giữa Server và các máy Client
+        public static long DataVersion { get; private set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        public static void NotifyDataChanged()
+        {
+            DataVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
 
         public static bool TryStartBackgroundServer()
         {
@@ -191,6 +200,13 @@ namespace Lab04_Bai07{
                         HinhAnh TEXT,
                         MoTa TEXT,
                         NguoiDongGop TEXT
+                    );
+                    -- Dọn dẹp các món ăn bị thêm trùng trước đó (giữ lại bản ghi đầu tiên)
+                    DELETE FROM MonAn
+                    WHERE Id NOT IN (
+                        SELECT MIN(Id)
+                        FROM MonAn
+                        GROUP BY LOWER(TRIM(TenMonAn))
                     );";
                 cmd.ExecuteNonQuery();
             }
@@ -271,7 +287,12 @@ namespace Lab04_Bai07{
 
             try
             {
-                if (method == "GET" && path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase))
+                if (method == "GET" && path == "/api/version")
+                {
+                    res.StatusCode = 200;
+                    await WriteJsonAsync(res, new { version = DataVersion });
+                }
+                else if (method == "GET" && path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase))
                     await HandleGetImageAsync(req, res);
                 else if (method == "POST" && path == "/api/signup")
                     await HandleSignupAsync(req, res);
@@ -505,7 +526,8 @@ namespace Lab04_Bai07{
             using var reader = new StreamReader(req.InputStream, req.ContentEncoding);
             var dto = JsonSerializer.Deserialize<MonAnRecord>(await reader.ReadToEndAsync(), JsonOptions);
 
-            if (dto == null || string.IsNullOrWhiteSpace(dto.TenMonAn))
+            string tenMonNormalized = (dto?.TenMonAn ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(tenMonNormalized))
             {
                 res.StatusCode = 400;
                 await WriteJsonAsync(res, new { message = "Tên món ăn không được để trống." });
@@ -515,17 +537,35 @@ namespace Lab04_Bai07{
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
 
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-                INSERT INTO MonAn (TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop)
-                VALUES ($ten, $gia, $dc, $img, $mota, $user);";
-            cmd.Parameters.AddWithValue("$ten", dto.TenMonAn.Trim());
-            cmd.Parameters.AddWithValue("$gia", dto.Gia);
-            cmd.Parameters.AddWithValue("$dc", dto.DiaChi.Trim());
-            cmd.Parameters.AddWithValue("$img", dto.HinhAnh.Trim());
-            cmd.Parameters.AddWithValue("$mota", dto.MoTa.Trim());
-            cmd.Parameters.AddWithValue("$user", username);
-            cmd.ExecuteNonQuery();
+            // Kiểm tra trùng tên món ăn (không phân biệt chữ hoa/thường và khoảng trắng thừa)
+            using (var checkCmd = conn.CreateCommand())
+            {
+                checkCmd.CommandText = "SELECT COUNT(*) FROM MonAn WHERE LOWER(TRIM(TenMonAn)) = LOWER($ten);";
+                checkCmd.Parameters.AddWithValue("$ten", tenMonNormalized);
+                if (Convert.ToInt64(checkCmd.ExecuteScalar() ?? 0) > 0)
+                {
+                    res.StatusCode = 409;
+                    await WriteJsonAsync(res, new { message = $"Món '{tenMonNormalized}' đã tồn tại trong danh sách!" });
+                    return;
+                }
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    INSERT INTO MonAn (TenMonAn, Gia, DiaChi, HinhAnh, MoTa, NguoiDongGop)
+                    VALUES ($ten, $gia, $dc, $img, $mota, $user);";
+                cmd.Parameters.AddWithValue("$ten", tenMonNormalized);
+                cmd.Parameters.AddWithValue("$gia", dto!.Gia);
+                cmd.Parameters.AddWithValue("$dc", (dto.DiaChi ?? "").Trim());
+                cmd.Parameters.AddWithValue("$img", (dto.HinhAnh ?? "").Trim());
+                cmd.Parameters.AddWithValue("$mota", (dto.MoTa ?? "").Trim());
+                cmd.Parameters.AddWithValue("$user", username);
+                cmd.ExecuteNonQuery();
+            }
+
+            // Đánh dấu dữ liệu đã thay đổi để Server và các Client tự cập nhật menu
+            NotifyDataChanged();
 
             res.StatusCode = 200;
             await WriteJsonAsync(res, new { message = "Thêm món ăn thành công!" });
@@ -554,7 +594,12 @@ namespace Lab04_Bai07{
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM MonAn WHERE Id = $id;";
             cmd.Parameters.AddWithValue("$id", id);
-            cmd.ExecuteNonQuery();
+            int affected = cmd.ExecuteNonQuery();
+
+            if (affected > 0)
+            {
+                NotifyDataChanged();
+            }
 
             res.StatusCode = 200;
             await WriteJsonAsync(res, new { message = "Đã xoá món ăn thành công!" });
@@ -620,6 +665,7 @@ namespace Lab04_Bai07{
             await res.OutputStream.WriteAsync(bytes, 0, bytes.Length);
         }
     }
+
     public class SignupDto
     {
         public string Username { get; set; } = "";

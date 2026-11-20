@@ -1,6 +1,7 @@
 using Lab04_Bai07;
 using System;
 using System.Drawing;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -10,6 +11,10 @@ namespace Lab04_Bai07
     {
         private bool isUpdatingPagination = false;
         private bool _isLoadingTab = false;
+
+        // Timer đồng bộ tự động mỗi 2 giây khi có Client/Server thêm hoặc xoá món
+        private readonly System.Windows.Forms.Timer _syncTimer = new System.Windows.Forms.Timer();
+        private string _lastKnownVersion = "";
 
         public HomNayAnGi()
         {
@@ -40,10 +45,15 @@ namespace Lab04_Bai07
                 cboPageSize.SelectedIndex = 0;
             }
             isUpdatingPagination = false;
+
+            cboPage.SelectedIndexChanged -= cboPage_SelectedIndexChanged;
+            cboPage.SelectedIndexChanged += cboPage_SelectedIndexChanged;
+
             cboPageSize.SelectedIndexChanged -= cboPageSize_SelectedIndexChanged;
             cboPageSize.SelectedIndexChanged += cboPageSize_SelectedIndexChanged;
 
             this.Load += HomNayAnGi_Load;
+            this.FormClosed += (s, e) => _syncTimer.Stop();
         }
 
         private void ConfigureFlowLayout(FlowLayoutPanel flp)
@@ -122,6 +132,52 @@ namespace Lab04_Bai07
 
             UpdateAuthUI();
             await LoadCurrentTabAsync();
+            StartRealtimeSync();
+        }
+
+        private void StartRealtimeSync()
+        {
+            _syncTimer.Interval = 2000; // Kiểm tra thay đổi mỗi 2 giây
+            _syncTimer.Tick += async (s, e) =>
+            {
+                if (_isLoadingTab) return;
+
+                try
+                {
+                    if (EmbeddedApiServer.IsHostingLocally)
+                    {
+                        string currentVer = EmbeddedApiServer.DataVersion.ToString();
+                        if (_lastKnownVersion != currentVer)
+                        {
+                            bool isFirst = string.IsNullOrEmpty(_lastKnownVersion);
+                            _lastKnownVersion = currentVer;
+                            if (!isFirst)
+                            {
+                                await LoadCurrentTabAsync();
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(ApiClient.BaseUrl))
+                    {
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                        string verJson = await http.GetStringAsync($"{ApiClient.BaseUrl.TrimEnd('/')}/api/version");
+                        if (_lastKnownVersion != verJson)
+                        {
+                            bool isFirst = string.IsNullOrEmpty(_lastKnownVersion);
+                            _lastKnownVersion = verJson;
+                            if (!isFirst)
+                            {
+                                await LoadCurrentTabAsync();
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Bỏ qua nếu mạng chập chờn ở nhịp kiểm tra hiện tại
+                }
+            };
+            _syncTimer.Start();
         }
 
         private void UpdateAuthUI()
@@ -335,36 +391,13 @@ namespace Lab04_Bai07
             }
         }
 
-        private void lblHomNayAnGi_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void flpMine_Paint(object sender, PaintEventArgs e)
-        {
-        }
-
-        private void flpAll_Paint(object sender, PaintEventArgs e)
-        {
-        }
-
-        private void lblAuthStatus_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void progressBar_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void lblPage_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void lblPageSize_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void HomNayAnGi_Load_1(object sender, EventArgs e)
-        {
-        }
+        private void lblHomNayAnGi_Click(object sender, EventArgs e) { }
+        private void flpMine_Paint(object sender, PaintEventArgs e) { }
+        private void flpAll_Paint(object sender, PaintEventArgs e) { }
+        private void lblAuthStatus_Click(object sender, EventArgs e) { }
+        private void progressBar_Click(object sender, EventArgs e) { }
+        private void lblPage_Click(object sender, EventArgs e) { }
+        private void lblPageSize_Click(object sender, EventArgs e) { }
+        private void HomNayAnGi_Load_1(object sender, EventArgs e) { }
     }
 }

@@ -21,7 +21,6 @@ namespace Lab04_Bai07
 
         private void EnsureActionControls()
         {
-            // Nếu trên [Design] chưa kéo sẵn nút "Thêm" / "Clear" / ô "Địa chỉ", tự tạo bổ sung gọn phía dưới
             if (this.Controls.Find("btnThem", true).Length == 0)
             {
                 int bottomY = Math.Max(richTxtMoTa.Bottom + 12, this.ClientSize.Height - 46);
@@ -62,8 +61,16 @@ namespace Lab04_Bai07
             {
                 btnThem = this.Controls.Find("btnThem", true)[0] as Button;
                 btnClear = this.Controls.Find("btnClear", true)[0] as Button;
-                if (btnThem != null) btnThem.Click += BtnThem_Click;
-                if (btnClear != null) btnClear.Click += BtnClear_Click;
+                if (btnThem != null)
+                {
+                    btnThem.Click -= BtnThem_Click;
+                    btnThem.Click += BtnThem_Click;
+                }
+                if (btnClear != null)
+                {
+                    btnClear.Click -= BtnClear_Click;
+                    btnClear.Click += BtnClear_Click;
+                }
             }
 
             if (this.Controls.Find("txtDiaChi", true).Length > 0)
@@ -123,6 +130,7 @@ namespace Lab04_Bai07
                 MoTa = richTxtMoTa.Text.Trim()
             };
 
+            if (btnThem != null) btnThem.Enabled = false;
             try
             {
                 var (success, message) = await ApiClient.AddMonAnAsync(mon);
@@ -141,42 +149,20 @@ namespace Lab04_Bai07
             {
                 MessageBox.Show("Không kết nối được tới API Server: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                if (btnThem != null && !this.IsDisposed) btnThem.Enabled = true;
+            }
         }
 
-        private void lblThemMonAn_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void lblTenMonAn_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void txtTenMonAn_TextChanged(object sender, EventArgs e)
-        {
-        }
-
-        private void lblGia_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void txtGia_TextChanged(object sender, EventArgs e)
-        {
-        }
-
-        private void lblHinhAnh_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void txtHinhAnh_TextChanged(object sender, EventArgs e)
-        {
-        }
-
-        private void lblMoTa_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void richTxtMoTa_TextChanged(object sender, EventArgs e)
-        {
-        }
+        private void lblThemMonAn_Click(object sender, EventArgs e) { }
+        private void lblTenMonAn_Click(object sender, EventArgs e) { }
+        private void txtTenMonAn_TextChanged(object sender, EventArgs e) { }
+        private void lblGia_Click(object sender, EventArgs e) { }
+        private void txtGia_TextChanged(object sender, EventArgs e) { }
+        private void lblHinhAnh_Click(object sender, EventArgs e) { }
+        private void txtHinhAnh_TextChanged(object sender, EventArgs e) { }
+        private void lblMoTa_Click(object sender, EventArgs e) { }
+        private void richTxtMoTa_TextChanged(object sender, EventArgs e) { }
     }
 }
