@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace Lab04_Bai07
@@ -26,6 +27,16 @@ namespace Lab04_Bai07
             {
                 rabtnMale.Checked = true;
             }
+
+            // Giới hạn ô SĐT tối đa 10 ký tự và chỉ cho nhập chữ số
+            textBox2.MaxLength = 10;
+            textBox2.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
+            };
         }
 
         private void SignupForm_Load(object sender, EventArgs e)
@@ -68,10 +79,31 @@ namespace Lab04_Bai07
         {
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
+            string email = textBox1.Text.Trim();
+            string phone = textBox2.Text.Trim();
 
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
                 MessageBox.Show("Vui lòng nhập đầy đủ Username và Password!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtUsername.Focus();
+                return;
+            }
+
+            // Kiểm tra định dạng Email (ví dụ: ten@gmail.com)
+            if (string.IsNullOrEmpty(email) || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                MessageBox.Show("Định dạng Email không hợp lệ (ví dụ: ten@gmail.com)!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox1.Focus();
+                textBox1.SelectAll();
+                return;
+            }
+
+            // Kiểm tra định dạng Số điện thoại Việt Nam (10 chữ số, đầu số 03, 05, 07, 08, 09)
+            if (string.IsNullOrEmpty(phone) || !Regex.IsMatch(phone, @"^(0[3|5|7|8|9])[0-9]{8}$"))
+            {
+                MessageBox.Show("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng đầu số Việt Nam (03, 05, 07, 08, 09)!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox2.Focus();
+                textBox2.SelectAll();
                 return;
             }
 
@@ -81,13 +113,14 @@ namespace Lab04_Bai07
                 Password = password,
                 Firstname = txtFirstname.Text.Trim(),
                 Lastname = txtLastname.Text.Trim(),
-                Email = textBox1.Text.Trim(),
-                Phone = textBox2.Text.Trim(),
+                Email = email,
+                Phone = phone,
                 Birthday = dateTimePicker1.Value.ToString("yyyy-MM-dd"),
                 Language = comboBox1.SelectedItem?.ToString() ?? "vi",
                 Sex = rabtnFemale.Checked ? "Female" : "Male"
             };
 
+            btnSubmit.Enabled = false;
             try
             {
                 var (success, message) = await ApiClient.SignupAsync(user);
@@ -105,6 +138,10 @@ namespace Lab04_Bai07
             catch (Exception ex)
             {
                 MessageBox.Show("Không kết nối được tới API Server: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnSubmit.Enabled = true;
             }
         }
 

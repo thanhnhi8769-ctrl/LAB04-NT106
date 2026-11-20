@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
@@ -14,7 +16,8 @@ namespace Lab04_Bai07
 {
     public static class EmbeddedApiServer
     {
-        private const string NgrokStaticDomain = "kettle-plausible-outscore.ngrok-free.dev";
+        // Kênh trung gian công khai để phát sóng URL Ngrok mới nhất cho mọi Client (không cần GitHub Token)
+        private const string SyncChannelUrl = "https://ntfy.sh/uit-nt106-lab04-nhom-mthu-2026";
 
         private static readonly string DbPath = Path.Combine(AppContext.BaseDirectory, "homnayangi.db");
         private static readonly string ConnectionString = $"Data Source={DbPath}";
@@ -24,8 +27,11 @@ namespace Lab04_Bai07
         private static HttpListener? _listener;
         private static Process? _ngrokProcess;
         public static bool IsHostingLocally { get; private set; } = false;
+        public static string PublicTunnelUrl { get; private set; } = "";
 
-        // Phiên bản dữ liệu để đồng bộ tự động giữa Server và các máy Client
+        // Sự kiện bắn thông báo lên giao diện máy Server mỗi khi có Client/User đăng nhập thành công
+        public static event Action<string>? UserLoggedIn;
+
         public static long DataVersion { get; private set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         public static void NotifyDataChanged()
@@ -46,13 +52,11 @@ namespace Lab04_Bai07
 
                 IsHostingLocally = true;
                 _ = Task.Run(() => ListenLoopAsync(_listener));
-                StartNgrokTunnel();
+                _ = Task.Run(StartNgrokAndPublishUrlAsync);
                 return true;
             }
             catch
             {
-                // Nếu máy không có quyền Admin hoặc cổng 8080 đã có Server khác chiếm,
-                // bỏ qua êm ái để máy này hoạt động như một Client thuần túy.
                 IsHostingLocally = false;
                 try { _listener?.Close(); } catch { }
                 return false;
@@ -63,22 +67,90 @@ namespace Lab04_Bai07
         {
             IsHostingLocally = false;
             try { _listener?.Stop(); _listener?.Close(); } catch { }
-            try { if (_ngrokProcess != null && !_ngrokProcess.HasExited) _ngrokProcess.Kill(); } catch { }
+            KillExistingNgrokProcesses();
         }
 
-        private static void StartNgrokTunnel()
+        private static void KillExistingNgrokProcesses()
         {
-            var psi = new ProcessStartInfo
+            try
             {
-                FileName = "ngrok",
-                Arguments = $"http --url={NgrokStaticDomain} 8080",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                if (_ngrokProcess != null && !_ngrokProcess.HasExited)
+                {
+                    _ngrokProcess.Kill(true);
+                }
+            }
+            catch { }
 
             try
             {
+                foreach (var proc in Process.GetProcessesByName("ngrok"))
+                {
+                    try { proc.Kill(true); } catch { }
+                }
+            }
+            catch { }
+        }
+
+        private static async Task StartNgrokAndPublishUrlAsync()
+        {
+            try
+            {
+                KillExistingNgrokProcesses();
+                await Task.Delay(500);
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "ngrok",
+                    Arguments = "http 8080",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
                 _ngrokProcess = Process.Start(psi);
+
+                // Hỏi API cục bộ của Ngrok (cổng 4040) tối đa 15 giây để lấy URL public
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                string foundUrl = "";
+
+                for (int i = 0; i < 15; i++)
+                {
+                    await Task.Delay(1000);
+                    try
+                    {
+                        string json = await http.GetStringAsync("http://127.0.0.1:4040/api/tunnels");
+                        using var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.TryGetProperty("tunnels", out var tunnels))
+                        {
+                            foreach (var t in tunnels.EnumerateArray())
+                            {
+                                string? url = t.GetProperty("public_url").GetString();
+                                if (!string.IsNullOrWhiteSpace(url) && url.StartsWith("https://"))
+                                {
+                                    foundUrl = url.TrimEnd('/') + "/";
+                                    break;
+                                }
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(foundUrl)) break;
+                    }
+                    catch { }
+                }
+
+                if (!string.IsNullOrEmpty(foundUrl))
+                {
+                    PublicTunnelUrl = foundUrl;
+                    await PublishUrlToChannelAsync(foundUrl);
+                }
+            }
+            catch { }
+        }
+
+        private static async Task PublishUrlToChannelAsync(string newUrl)
+        {
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                using var content = new StringContent(newUrl, Encoding.UTF8, "text/plain");
+                await http.PostAsync(SyncChannelUrl, content);
             }
             catch { }
         }
@@ -302,6 +374,23 @@ namespace Lab04_Bai07
                 return;
             }
 
+            string email = (dto.Email ?? "").Trim();
+            string phone = (dto.Phone ?? "").Trim();
+
+            if (string.IsNullOrEmpty(email) || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                res.StatusCode = 400;
+                await WriteJsonAsync(res, new { message = "Định dạng Email không hợp lệ (ví dụ: ten@gmail.com)." });
+                return;
+            }
+
+            if (string.IsNullOrEmpty(phone) || !Regex.IsMatch(phone, @"^(0[3|5|7|8|9])[0-9]{8}$"))
+            {
+                res.StatusCode = 400;
+                await WriteJsonAsync(res, new { message = "Số điện thoại phải gồm 10 chữ số và đúng đầu số Việt Nam (03, 05, 07, 08, 09)." });
+                return;
+            }
+
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
 
@@ -324,10 +413,10 @@ namespace Lab04_Bai07
                     VALUES ($u, $p, $e, $f, $l, $ph, $b, $lang, $sex);";
                 insCmd.Parameters.AddWithValue("$u", dto.Username.Trim());
                 insCmd.Parameters.AddWithValue("$p", HashPassword(dto.Password));
-                insCmd.Parameters.AddWithValue("$e", dto.Email.Trim());
+                insCmd.Parameters.AddWithValue("$e", email);
                 insCmd.Parameters.AddWithValue("$f", dto.Firstname.Trim());
                 insCmd.Parameters.AddWithValue("$l", dto.Lastname.Trim());
-                insCmd.Parameters.AddWithValue("$ph", dto.Phone.Trim());
+                insCmd.Parameters.AddWithValue("$ph", phone);
                 insCmd.Parameters.AddWithValue("$b", dto.Birthday.Trim());
                 insCmd.Parameters.AddWithValue("$lang", dto.Language.Trim());
                 insCmd.Parameters.AddWithValue("$sex", dto.Sex.Trim());
@@ -370,6 +459,11 @@ namespace Lab04_Bai07
             string firstname = rd.IsDBNull(1) ? dbUser : rd.GetString(1);
             string token = Guid.NewGuid().ToString("N");
             ActiveTokens[token] = dbUser;
+
+            // Lấy IP thực của Client (qua header Ngrok nếu có) và bắn thông báo lên máy Server
+            string clientIp = req.Headers["X-Forwarded-For"] ?? req.RemoteEndPoint?.Address.ToString() ?? "Unknown IP";
+            string logMsg = $"[{DateTime.Now:HH:mm:ss}] Tài khoản '{dbUser}' ({firstname}) vừa đăng nhập từ IP: {clientIp}";
+            UserLoggedIn?.Invoke(logMsg);
 
             res.StatusCode = 200;
             await WriteJsonAsync(res, new { token, username = dbUser, firstname, message = "Đăng nhập thành công!" });

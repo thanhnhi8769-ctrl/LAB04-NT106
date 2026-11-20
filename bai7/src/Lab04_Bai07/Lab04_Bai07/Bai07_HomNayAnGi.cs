@@ -53,7 +53,28 @@ namespace Lab04_Bai07
             cboPageSize.SelectedIndexChanged += cboPageSize_SelectedIndexChanged;
 
             this.Load += HomNayAnGi_Load;
-            this.FormClosed += (s, e) => _syncTimer.Stop();
+            this.FormClosed += (s, e) =>
+            {
+                _syncTimer.Stop();
+                EmbeddedApiServer.UserLoggedIn -= OnServerUserLoggedIn;
+            };
+        }
+
+        private void OnServerUserLoggedIn(string logMsg)
+        {
+            if (this.IsHandleCreated && !this.IsDisposed)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    MessageBox.Show(
+                        this,
+                        logMsg,
+                        "Thông báo đăng nhập từ Client",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }));
+            }
         }
 
         private void ConfigureFlowLayout(FlowLayoutPanel flp)
@@ -100,13 +121,13 @@ namespace Lab04_Bai07
         {
             if (EmbeddedApiServer.IsHostingLocally)
             {
-                // Máy này đang chạy Server -> trỏ thẳng vào localhost:8080
                 ApiClient.SetBaseUrl("http://localhost:8080/");
+                EmbeddedApiServer.UserLoggedIn -= OnServerUserLoggedIn;
+                EmbeddedApiServer.UserLoggedIn += OnServerUserLoggedIn;
             }
             else
             {
-                // Máy này là Client -> kết nối thẳng tới tên miền Ngrok tĩnh cố định
-                ApiClient.SetBaseUrl(ApiClient.DefaultStaticServerUrl);
+                await ApiClient.LoadServerUrlFromGitHubAsync();
             }
 
             var tab = GetParentTabControl();

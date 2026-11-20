@@ -53,6 +53,7 @@ namespace Lab04_Bai07
 
     public static class ApiClient
     {
+        private const string SyncChannelPollUrl = "https://ntfy.sh/uit-nt106-lab04-nhom-mthu-2026/json?poll=1&since=all";
         public const string DefaultStaticServerUrl = "https://kettle-plausible-outscore.ngrok-free.dev/";
         public static string BaseUrl { get; private set; } = DefaultStaticServerUrl;
 
@@ -90,9 +91,35 @@ namespace Lab04_Bai07
             return true;
         }
 
-        public static Task<bool> LoadServerUrlFromGitHubAsync()
+        public static async Task<bool> LoadServerUrlFromGitHubAsync()
         {
-            return Task.FromResult(SetBaseUrl(DefaultStaticServerUrl));
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                string rawLines = await http.GetStringAsync(SyncChannelPollUrl);
+
+                string latestUrl = "";
+                foreach (string line in rawLines.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    using var doc = JsonDocument.Parse(line);
+                    if (doc.RootElement.TryGetProperty("message", out var msgProp))
+                    {
+                        string msg = (msgProp.GetString() ?? "").Trim();
+                        if (msg.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            latestUrl = msg;
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(latestUrl))
+                {
+                    return SetBaseUrl(latestUrl);
+                }
+            }
+            catch { }
+
+            return SetBaseUrl(DefaultStaticServerUrl);
         }
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
