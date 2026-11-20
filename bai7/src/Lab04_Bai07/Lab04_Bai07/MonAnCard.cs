@@ -119,7 +119,8 @@ namespace Lab04_Bai07
                     if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                         source.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                     {
-                        using var http = new HttpClient();
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                        http.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "true");
                         byte[] bytes = await http.GetByteArrayAsync(source);
                         var ms = new MemoryStream(bytes);
                         picAnhMonAn.Image = Image.FromStream(ms);
@@ -144,7 +145,8 @@ namespace Lab04_Bai07
                     if (!string.IsNullOrWhiteSpace(fileName))
                     {
                         string serverImageUrl = $"{ApiClient.BaseUrl.TrimEnd('/')}/images/{Uri.EscapeDataString(fileName)}";
-                        using var http = new HttpClient();
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                        http.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "true");
                         byte[] bytes = await http.GetByteArrayAsync(serverImageUrl);
                         var ms = new MemoryStream(bytes);
                         picAnhMonAn.Image = Image.FromStream(ms);

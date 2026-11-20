@@ -53,18 +53,21 @@ namespace Lab04_Bai07
 
     public static class ApiClient
     {
-        public static string BaseUrl { get; private set; } = "http://localhost:8080/";
+        public const string DefaultStaticServerUrl = "https://kettle-plausible-outscore.ngrok-free.dev/";
+        public static string BaseUrl { get; private set; } = DefaultStaticServerUrl;
 
         private static HttpClient Client = CreateHttpClient(BaseUrl);
 
         private static HttpClient CreateHttpClient(string url)
         {
             if (!url.EndsWith("/")) url += "/";
-            return new HttpClient
+            var client = new HttpClient
             {
                 BaseAddress = new Uri(url),
                 Timeout = TimeSpan.FromSeconds(15)
             };
+            client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "true");
+            return client;
         }
 
         public static bool SetBaseUrl(string url)
@@ -87,33 +90,9 @@ namespace Lab04_Bai07
             return true;
         }
 
-        private const string GitHubApiContentUrl = "https://api.github.com/repos/thanhnhi8769-ctrl/LAB04-NT106/contents/server_url.txt";
-        private const string GitHubRawUrl = "https://raw.githubusercontent.com/thanhnhi8769-ctrl/LAB04-NT106/main/server_url.txt";
-
-        public static async Task<bool> LoadServerUrlFromGitHubAsync()
+        public static Task<bool> LoadServerUrlFromGitHubAsync()
         {
-            try
-            {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("Lab04-Bai07-Client");
-                http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3.raw");
-
-                string remoteUrl = await http.GetStringAsync($"{GitHubApiContentUrl}?ref=main&t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
-                return SetBaseUrl(remoteUrl.Trim());
-            }
-            catch
-            {
-                try
-                {
-                    using var httpFallback = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-                    string remoteUrl = await httpFallback.GetStringAsync($"{GitHubRawUrl}?t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
-                    return SetBaseUrl(remoteUrl.Trim());
-                }
-                catch
-                {
-                    return false;
-                }
-            }
+            return Task.FromResult(SetBaseUrl(DefaultStaticServerUrl));
         }
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions

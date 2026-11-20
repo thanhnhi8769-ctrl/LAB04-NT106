@@ -7,7 +7,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
@@ -15,13 +14,15 @@ namespace Lab04_Bai07
 {
     public static class EmbeddedApiServer
     {
+        private const string NgrokStaticDomain = "kettle-plausible-outscore.ngrok-free.dev";
+
         private static readonly string DbPath = Path.Combine(AppContext.BaseDirectory, "homnayangi.db");
         private static readonly string ConnectionString = $"Data Source={DbPath}";
         private static readonly ConcurrentDictionary<string, string> ActiveTokens = new();
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
         private static HttpListener? _listener;
-        private static Process? _cloudflaredProcess;
+        private static Process? _ngrokProcess;
         public static bool IsHostingLocally { get; private set; } = false;
 
         // Phiên bản dữ liệu để đồng bộ tự động giữa Server và các máy Client
@@ -45,12 +46,12 @@ namespace Lab04_Bai07
 
                 IsHostingLocally = true;
                 _ = Task.Run(() => ListenLoopAsync(_listener));
-                StartCloudflareAndPublishUrl();
+                StartNgrokTunnel();
                 return true;
             }
             catch
             {
-                // Nếu máy chạy không có quyền Admin hoặc cổng 8080 đã có Server khác chiếm,
+                // Nếu máy không có quyền Admin hoặc cổng 8080 đã có Server khác chiếm,
                 // bỏ qua êm ái để máy này hoạt động như một Client thuần túy.
                 IsHostingLocally = false;
                 try { _listener?.Close(); } catch { }
@@ -62,84 +63,24 @@ namespace Lab04_Bai07
         {
             IsHostingLocally = false;
             try { _listener?.Stop(); _listener?.Close(); } catch { }
-            try { if (_cloudflaredProcess != null && !_cloudflaredProcess.HasExited) _cloudflaredProcess.Kill(); } catch { }
+            try { if (_ngrokProcess != null && !_ngrokProcess.HasExited) _ngrokProcess.Kill(); } catch { }
         }
 
-        private static void StartCloudflareAndPublishUrl()
+        private static void StartNgrokTunnel()
         {
-            string cloudflaredPath = @"C:\Program Files (x86)\cloudflared\cloudflared.exe";
-            if (!File.Exists(cloudflaredPath))
-            {
-                cloudflaredPath = "cloudflared";
-            }
-
             var psi = new ProcessStartInfo
             {
-                FileName = cloudflaredPath,
-                Arguments = "tunnel --url http://localhost:8080",
+                FileName = "ngrok",
+                Arguments = $"http --url={NgrokStaticDomain} 8080",
                 UseShellExecute = false,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
                 CreateNoWindow = true
-            };
-
-            _cloudflaredProcess = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            bool urlPublished = false;
-
-            _cloudflaredProcess.ErrorDataReceived += async (s, e) =>
-            {
-                if (string.IsNullOrEmpty(e.Data) || urlPublished) return;
-
-                var match = Regex.Match(e.Data, @"https://[a-zA-Z0-9-]+\.trycloudflare\.com");
-                if (match.Success)
-                {
-                    urlPublished = true;
-                    await PushUrlToGitHubAsync(match.Value);
-                }
             };
 
             try
             {
-                _cloudflaredProcess.Start();
-                _cloudflaredProcess.BeginErrorReadLine();
+                _ngrokProcess = Process.Start(psi);
             }
             catch { }
-        }
-
-        private static async Task PushUrlToGitHubAsync(string tunnelUrl)
-        {
-            try
-            {
-                DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
-                while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
-                {
-                    dir = dir.Parent;
-                }
-                if (dir == null) return;
-
-                string repoRoot = dir.FullName;
-                string urlFile = Path.Combine(repoRoot, "server_url.txt");
-                await File.WriteAllTextAsync(urlFile, tunnelUrl.Trim());
-
-                await RunGitCommandAsync(repoRoot, "add server_url.txt");
-                await RunGitCommandAsync(repoRoot, $"commit -m \"Update server URL: {tunnelUrl}\"");
-                await RunGitCommandAsync(repoRoot, "push origin main");
-            }
-            catch { }
-        }
-
-        private static async Task RunGitCommandAsync(string workingDir, string arguments)
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = workingDir,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var proc = Process.Start(psi);
-            if (proc != null) await proc.WaitForExitAsync();
         }
 
         private static async Task ListenLoopAsync(HttpListener listener)
@@ -201,7 +142,6 @@ namespace Lab04_Bai07
                         MoTa TEXT,
                         NguoiDongGop TEXT
                     );
-                    -- Dọn dẹp các món ăn bị thêm trùng trước đó (giữ lại bản ghi đầu tiên)
                     DELETE FROM MonAn
                     WHERE Id NOT IN (
                         SELECT MIN(Id)
@@ -537,7 +477,6 @@ namespace Lab04_Bai07
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
 
-            // Kiểm tra trùng tên món ăn (không phân biệt chữ hoa/thường và khoảng trắng thừa)
             using (var checkCmd = conn.CreateCommand())
             {
                 checkCmd.CommandText = "SELECT COUNT(*) FROM MonAn WHERE LOWER(TRIM(TenMonAn)) = LOWER($ten);";
@@ -552,7 +491,6 @@ namespace Lab04_Bai07
 
             string savedImagePath = (dto!.HinhAnh ?? "").Trim();
 
-            // Nếu Client có gửi kèm dữ liệu ảnh (Base64), lưu thành file thật vào thư mục images của Server
             if (!string.IsNullOrWhiteSpace(dto.ImageBase64))
             {
                 try
@@ -571,10 +509,7 @@ namespace Lab04_Bai07
 
                     savedImagePath = $"images/{uniqueFileName}";
                 }
-                catch
-                {
-                    // Nếu giải mã ảnh lỗi thì giữ nguyên đường dẫn gốc
-                }
+                catch { }
             }
 
             using (var cmd = conn.CreateCommand())
@@ -591,7 +526,6 @@ namespace Lab04_Bai07
                 cmd.ExecuteNonQuery();
             }
 
-            // Đánh dấu dữ liệu đã thay đổi để Server và các Client tự cập nhật menu
             NotifyDataChanged();
 
             res.StatusCode = 200;

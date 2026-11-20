@@ -105,17 +105,8 @@ namespace Lab04_Bai07
             }
             else
             {
-                // Máy này là Client -> tự động tải link Cloudflare mới nhất từ GitHub
-                bool loaded = await ApiClient.LoadServerUrlFromGitHubAsync();
-                if (!loaded)
-                {
-                    string inputUrl = Microsoft.VisualBasic.Interaction.InputBox(
-                        "Không lấy được link tự động. Nhập địa chỉ Server:",
-                        "Cấu hình kết nối Server",
-                        ApiClient.BaseUrl
-                    );
-                    if (!string.IsNullOrWhiteSpace(inputUrl)) ApiClient.SetBaseUrl(inputUrl);
-                }
+                // Máy này là Client -> kết nối thẳng tới tên miền Ngrok tĩnh cố định
+                ApiClient.SetBaseUrl(ApiClient.DefaultStaticServerUrl);
             }
 
             var tab = GetParentTabControl();
@@ -159,7 +150,8 @@ namespace Lab04_Bai07
                     }
                     else if (!string.IsNullOrWhiteSpace(ApiClient.BaseUrl))
                     {
-                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+                        http.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "true");
                         string verJson = await http.GetStringAsync($"{ApiClient.BaseUrl.TrimEnd('/')}/api/version");
                         if (_lastKnownVersion != verJson)
                         {
