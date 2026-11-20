@@ -1,1 +1,1 @@
-https://proceedings-varied-streaming-printing.trycloudflare.com
+https://api.trycloudflare.com
