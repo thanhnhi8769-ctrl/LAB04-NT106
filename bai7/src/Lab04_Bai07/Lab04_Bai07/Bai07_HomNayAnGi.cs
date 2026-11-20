@@ -9,6 +9,8 @@ namespace Lab04_Bai07
 {
     public partial class HomNayAnGi : Form
     {
+        private const int DefaultPageSize = 5;
+
         private bool isUpdatingPagination = false;
         private bool _isLoadingTab = false;
 
@@ -35,22 +37,10 @@ namespace Lab04_Bai07
             {
                 cboPage.SelectedIndex = 0;
             }
-
-            if (cboPageSize.Items.Count == 0)
-            {
-                cboPageSize.Items.AddRange(new object[] { 5, 10, 20 });
-            }
-            if (cboPageSize.SelectedIndex < 0 && cboPageSize.Items.Count > 0)
-            {
-                cboPageSize.SelectedIndex = 0;
-            }
             isUpdatingPagination = false;
 
             cboPage.SelectedIndexChanged -= cboPage_SelectedIndexChanged;
             cboPage.SelectedIndexChanged += cboPage_SelectedIndexChanged;
-
-            cboPageSize.SelectedIndexChanged -= cboPageSize_SelectedIndexChanged;
-            cboPageSize.SelectedIndexChanged += cboPageSize_SelectedIndexChanged;
 
             this.Load += HomNayAnGi_Load;
             this.FormClosed += (s, e) =>
@@ -242,10 +232,9 @@ namespace Lab04_Bai07
                 }
 
                 int page = cboPage.SelectedItem is int p ? p : (int.TryParse(cboPage.Text, out int parsedP) ? parsedP : 1);
-                int pageSize = cboPageSize.SelectedItem is int ps ? ps : (int.TryParse(cboPageSize.Text, out int parsedPs) ? parsedPs : 5);
 
                 SetLoadingState(true);
-                var res = await ApiClient.GetMonAnAsync(onlyMine, page, pageSize);
+                var res = await ApiClient.GetMonAnAsync(onlyMine, page, DefaultPageSize);
 
                 isUpdatingPagination = true;
                 int totalPages = Math.Max(1, res.TotalPages);
@@ -393,24 +382,12 @@ namespace Lab04_Bai07
             }
         }
 
-        private async void cboPageSize_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (!isUpdatingPagination)
-            {
-                isUpdatingPagination = true;
-                if (cboPage.Items.Count > 0) cboPage.SelectedIndex = 0;
-                isUpdatingPagination = false;
-                await LoadCurrentTabAsync();
-            }
-        }
-
         private void lblHomNayAnGi_Click(object sender, EventArgs e) { }
         private void flpMine_Paint(object sender, PaintEventArgs e) { }
         private void flpAll_Paint(object sender, PaintEventArgs e) { }
         private void lblAuthStatus_Click(object sender, EventArgs e) { }
         private void progressBar_Click(object sender, EventArgs e) { }
         private void lblPage_Click(object sender, EventArgs e) { }
-        private void lblPageSize_Click(object sender, EventArgs e) { }
         private void HomNayAnGi_Load_1(object sender, EventArgs e) { }
     }
 }

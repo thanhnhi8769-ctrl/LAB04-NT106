@@ -38,8 +38,6 @@
             tabToiDongGop = new TabPage();
             flpMine = new FlowLayoutPanel();
             lblPage = new Label();
-            lblPageSize = new Label();
-            cboPageSize = new ComboBox();
             cboPage = new ComboBox();
             lblAuthStatus = new Label();
             lnkAuthAction = new LinkLabel();
@@ -156,36 +154,12 @@
             lblPage.AutoSize = true;
             lblPage.BackColor = Color.Ivory;
             lblPage.ForeColor = Color.SaddleBrown;
-            lblPage.Location = new Point(345, 667);
+            lblPage.Location = new Point(486, 670);
             lblPage.Name = "lblPage";
             lblPage.Size = new Size(39, 19);
             lblPage.TabIndex = 4;
             lblPage.Text = "Page";
             lblPage.Click += lblPage_Click;
-            // 
-            // lblPageSize
-            // 
-            lblPageSize.AutoSize = true;
-            lblPageSize.BackColor = Color.Ivory;
-            lblPageSize.ForeColor = Color.SaddleBrown;
-            lblPageSize.Location = new Point(460, 667);
-            lblPageSize.Name = "lblPageSize";
-            lblPageSize.Size = new Size(65, 19);
-            lblPageSize.TabIndex = 5;
-            lblPageSize.Text = "Page size";
-            lblPageSize.Click += lblPageSize_Click;
-            // 
-            // cboPageSize
-            // 
-            cboPageSize.BackColor = Color.White;
-            cboPageSize.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboPageSize.FlatStyle = FlatStyle.Popup;
-            cboPageSize.FormattingEnabled = true;
-            cboPageSize.Location = new Point(527, 664);
-            cboPageSize.Name = "cboPageSize";
-            cboPageSize.Size = new Size(54, 27);
-            cboPageSize.TabIndex = 7;
-            cboPageSize.SelectedIndexChanged += cboPageSize_SelectedIndexChanged;
             // 
             // cboPage
             // 
@@ -193,7 +167,7 @@
             cboPage.DropDownStyle = ComboBoxStyle.DropDownList;
             cboPage.FlatStyle = FlatStyle.Popup;
             cboPage.FormattingEnabled = true;
-            cboPage.Location = new Point(386, 664);
+            cboPage.Location = new Point(527, 667);
             cboPage.Name = "cboPage";
             cboPage.Size = new Size(54, 27);
             cboPage.TabIndex = 8;
@@ -243,8 +217,6 @@
             Controls.Add(lnkAuthAction);
             Controls.Add(lblAuthStatus);
             Controls.Add(cboPage);
-            Controls.Add(cboPageSize);
-            Controls.Add(lblPageSize);
             Controls.Add(lblPage);
             Controls.Add(tabControl);
             Controls.Add(btnThemMonAn);
@@ -273,8 +245,6 @@
         private FlowLayoutPanel flpAll;
         private FlowLayoutPanel flpMine;
         private Label lblPage;
-        private Label lblPageSize;
-        private ComboBox cboPageSize;
         private ComboBox cboPage;
         private Label lblAuthStatus;
         private LinkLabel lnkAuthAction;
