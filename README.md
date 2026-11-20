@@ -111,7 +111,6 @@ Các bài tập được tổ chức thành những project riêng trong cùng m
 - **Web Browser:** Microsoft Edge WebView2
 - **Xử lý HTML:** HTML Agility Pack
 - **Định dạng dữ liệu:** HTML, JSON
-- **API Testing:** Postman
 - **Quản lý mã nguồn:** Git, GitHub
 
 ---
