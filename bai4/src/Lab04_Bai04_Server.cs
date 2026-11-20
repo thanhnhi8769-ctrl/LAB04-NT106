@@ -11,7 +11,7 @@ namespace LAB03
 {
     public class Lab04_Bai04_Server
     {
-        private const int Port = 9090;
+        public const int Port = 9090;
         private static readonly string DataFile =
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lab03_Bai04_Seats.txt");
 
@@ -25,6 +25,30 @@ namespace LAB03
 
         // Lưu lỗi khởi động Server (null = chạy bình thường)
         public static string LoiKhoiDong = null;
+
+        // IP của máy chạy Server: đọc từ file serverip.txt cạnh file .exe.
+        // Không có file -> 127.0.0.1 (máy này vừa là Server vừa là Client).
+        public static string ServerIp
+        {
+            get
+            {
+                try
+                {
+                    string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "serverip.txt");
+                    if (File.Exists(p))
+                    {
+                        string s = File.ReadAllText(p).Trim();
+                        if (s.Length > 0) return s;
+                    }
+                }
+                catch { }
+                return "127.0.0.1";
+            }
+        }
+
+        // true nếu máy này là máy chủ (cần mở Server)
+        public static bool LaMayChu =>
+            ServerIp == "127.0.0.1" || ServerIp.Equals("localhost", StringComparison.OrdinalIgnoreCase);
 
         public static void StartServer()
         {
