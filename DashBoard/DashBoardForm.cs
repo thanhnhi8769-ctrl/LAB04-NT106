@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Lab04_Bai07;
 using LAB03;
 using Bai01;
 using Bai02;
@@ -42,7 +43,8 @@ namespace DashBoard
 
         private void btnBai7_Click(object sender, EventArgs e)
         {
-
+            HomNayAnGi form = new HomNayAnGi();
+            form.Show();
         }
 
         private void btnThoat_Click(object sender, EventArgs e)

@@ -3,6 +3,6 @@
   <Project Path="../bai2/src/Bai02/Bai02.csproj" />
   <Project Path="../bai3/src/Bai03/Bai03.csproj" />
   <Project Path="../bai4/src/Bai04.csproj" />
-  <Project Path="../bai7/src/Lab04_Bai07_Server/Lab04_Bai07_Client/Bai07.csproj" />
+  <Project Path="../bai7/src/Lab04_Bai07/Lab04_Bai07/Bai07.csproj" />
   <Project Path="DashBoard.csproj" />
 </Solution>

@@ -13,6 +13,7 @@
     <ProjectReference Include="..\bai3\src\Bai03\Bai03.csproj" />
     <ProjectReference Include="..\bai1\src\Bai01\Bai01.csproj" />
 	  <ProjectReference Include="..\bai4\src\Bai04.csproj" />
+	  <ProjectReference Include="..\bai7\src\Lab04_Bai07\Lab04_Bai07\Bai07.csproj" />
   </ItemGroup>
 
   <ItemGroup>
