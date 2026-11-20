@@ -1,1 +1,1 @@
-https://api.trycloudflare.com
+https://democratic-lodge-giant-modems.trycloudflare.com
