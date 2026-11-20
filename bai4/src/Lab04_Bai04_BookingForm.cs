@@ -96,7 +96,7 @@ namespace LAB03
             {
                 try
                 {
-                    tcpClient = new TcpClient("127.0.0.1", 9090);
+                    tcpClient = new TcpClient(Lab04_Bai04_Server.ServerIp, Lab04_Bai04_Server.Port);
                     NetworkStream stream = tcpClient.GetStream();
                     UTF8Encoding utf8 = new UTF8Encoding(false);
                     reader = new StreamReader(stream, utf8);
@@ -115,7 +115,7 @@ namespace LAB03
                 }
             }
 
-            MessageBox.Show("Không thể kết nối đến Server Port 9090!", "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Không thể kết nối đến Server {Lab04_Bai04_Server.ServerIp}:{Lab04_Bai04_Server.Port}!", "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         // Trả về true nếu gửi được, false nếu chưa kết nối / lỗi
@@ -317,7 +317,7 @@ namespace LAB03
             {
                 dangChoPhanHoi = false;
                 MessageBox.Show(
-                    "Server không phản hồi.\nCổng 9090 có thể đang bị chương trình khác chiếm.",
+                    "Server không phản hồi.\nKiểm tra máy chủ đã chạy, cổng 9090 và tường lửa.",
                     "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }

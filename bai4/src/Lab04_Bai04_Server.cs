@@ -26,6 +26,9 @@ namespace LAB03
         // Lưu lỗi khởi động Server (null = chạy bình thường)
         public static string LoiKhoiDong = null;
 
+        // true khi Server đã thực sự nghe cổng
+        public static volatile bool DaNghe = false;
+
         // IP của máy chạy Server: đọc từ file serverip.txt cạnh file .exe.
         // Không có file -> 127.0.0.1 (máy này vừa là Server vừa là Client).
         public static string ServerIp
@@ -64,6 +67,7 @@ namespace LAB03
                 {
                     server = new TcpListener(IPAddress.Any, Port);
                     server.Start();
+                    DaNghe = true;
                     LoadData();
 
                     while (isRunning)
