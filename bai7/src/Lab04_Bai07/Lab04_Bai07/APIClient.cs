@@ -36,6 +36,7 @@ namespace Lab04_Bai07
         public int Gia { get; set; }
         public string DiaChi { get; set; } = "";
         public string HinhAnh { get; set; } = "";
+        public string ImageBase64 { get; set; } = "";
         public string MoTa { get; set; } = "";
         public string NguoiDongGop { get; set; } = "";
     }
@@ -85,6 +86,8 @@ namespace Lab04_Bai07
             AttachToken();
             return true;
         }
+
+        private const string GitHubApiContentUrl = "https://api.github.com/repos/thanhnhi8769-ctrl/LAB04-NT106/contents/server_url.txt";
         private const string GitHubRawUrl = "https://raw.githubusercontent.com/thanhnhi8769-ctrl/LAB04-NT106/main/server_url.txt";
 
         public static async Task<bool> LoadServerUrlFromGitHubAsync()
@@ -92,14 +95,27 @@ namespace Lab04_Bai07
             try
             {
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-                string remoteUrl = await http.GetStringAsync($"{GitHubRawUrl}?t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("Lab04-Bai07-Client");
+                http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3.raw");
+
+                string remoteUrl = await http.GetStringAsync($"{GitHubApiContentUrl}?ref=main&t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
                 return SetBaseUrl(remoteUrl.Trim());
             }
             catch
             {
-                return false;
+                try
+                {
+                    using var httpFallback = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                    string remoteUrl = await httpFallback.GetStringAsync($"{GitHubRawUrl}?t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                    return SetBaseUrl(remoteUrl.Trim());
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
+
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

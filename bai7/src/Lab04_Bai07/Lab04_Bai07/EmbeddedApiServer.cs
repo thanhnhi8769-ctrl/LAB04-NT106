@@ -550,6 +550,33 @@ namespace Lab04_Bai07
                 }
             }
 
+            string savedImagePath = (dto!.HinhAnh ?? "").Trim();
+
+            // Nếu Client có gửi kèm dữ liệu ảnh (Base64), lưu thành file thật vào thư mục images của Server
+            if (!string.IsNullOrWhiteSpace(dto.ImageBase64))
+            {
+                try
+                {
+                    string imagesDir = ResolveImagesDirectory();
+                    Directory.CreateDirectory(imagesDir);
+
+                    string ext = Path.GetExtension(savedImagePath);
+                    if (string.IsNullOrWhiteSpace(ext)) ext = ".png";
+
+                    string uniqueFileName = $"{Guid.NewGuid():N}{ext}";
+                    string fullSavePath = Path.Combine(imagesDir, uniqueFileName);
+
+                    byte[] imageBytes = Convert.FromBase64String(dto.ImageBase64);
+                    await File.WriteAllBytesAsync(fullSavePath, imageBytes);
+
+                    savedImagePath = $"images/{uniqueFileName}";
+                }
+                catch
+                {
+                    // Nếu giải mã ảnh lỗi thì giữ nguyên đường dẫn gốc
+                }
+            }
+
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
@@ -558,7 +585,7 @@ namespace Lab04_Bai07
                 cmd.Parameters.AddWithValue("$ten", tenMonNormalized);
                 cmd.Parameters.AddWithValue("$gia", dto!.Gia);
                 cmd.Parameters.AddWithValue("$dc", (dto.DiaChi ?? "").Trim());
-                cmd.Parameters.AddWithValue("$img", (dto.HinhAnh ?? "").Trim());
+                cmd.Parameters.AddWithValue("$img", savedImagePath);
                 cmd.Parameters.AddWithValue("$mota", (dto.MoTa ?? "").Trim());
                 cmd.Parameters.AddWithValue("$user", username);
                 cmd.ExecuteNonQuery();
@@ -692,6 +719,7 @@ namespace Lab04_Bai07
         public int Gia { get; set; }
         public string DiaChi { get; set; } = "";
         public string HinhAnh { get; set; } = "";
+        public string ImageBase64 { get; set; } = "";
         public string MoTa { get; set; } = "";
         public string NguoiDongGop { get; set; } = "";
     }

@@ -18,6 +18,12 @@ namespace Lab04_Bai07
             InitializeComponent();
             picAnhMonAn.SizeMode = PictureBoxSizeMode.StretchImage;
             picAnhMonAn.BorderStyle = BorderStyle.None;
+
+            // Đổi con trỏ thành hình bàn tay và gắn sự kiện bấm vào tên món
+            lblTenMon.Cursor = Cursors.Hand;
+            lblTenMon.Click -= lblTenMon_Click;
+            lblTenMon.Click += lblTenMon_Click;
+
             this.Resize += MonAnCard_Resize;
             ApplyResponsiveLayout();
         }
@@ -177,7 +183,20 @@ namespace Lab04_Bai07
             DeleteClicked?.Invoke(this, MonAnData.Id);
         }
 
-        private void lblTenMon_Click(object sender, EventArgs e) { }
+        private void lblTenMon_Click(object? sender, EventArgs e)
+        {
+            string moTa = string.IsNullOrWhiteSpace(MonAnData.MoTa)
+                ? "Chưa có mô tả cho món ăn này."
+                : MonAnData.MoTa;
+
+            MessageBox.Show(
+                moTa,
+                $"Mô tả món: {MonAnData.TenMonAn}",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+        }
+
         private void lblGia_Click(object sender, EventArgs e) { }
         private void lblDongGop_Click(object sender, EventArgs e) { }
         private void picAnhMonAn_Click(object sender, EventArgs e) { }

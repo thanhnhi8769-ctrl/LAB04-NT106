@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace Lab04_Bai07
@@ -121,12 +122,32 @@ namespace Lab04_Bai07
                 return;
             }
 
+            string imgPath = txtHinhAnh.Text.Trim();
+            string imgBase64 = "";
+            string imgFileNameOrUrl = imgPath;
+
+            if (!string.IsNullOrEmpty(imgPath) && File.Exists(imgPath))
+            {
+                try
+                {
+                    byte[] fileBytes = await File.ReadAllBytesAsync(imgPath);
+                    imgBase64 = Convert.ToBase64String(fileBytes);
+                    imgFileNameOrUrl = Path.GetFileName(imgPath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Không thể đọc file ảnh đã chọn: " + ex.Message, "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
             MonAnDto mon = new MonAnDto
             {
                 TenMonAn = tenMon,
                 Gia = gia,
                 DiaChi = txtDiaChi?.Text.Trim() ?? "",
-                HinhAnh = txtHinhAnh.Text.Trim(),
+                HinhAnh = imgFileNameOrUrl,
+                ImageBase64 = imgBase64,
                 MoTa = richTxtMoTa.Text.Trim()
             };
 
