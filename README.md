@@ -246,18 +246,25 @@ Hiển thị HTML (rtbHTML)
   * **Khu vực trên:** Tiêu đề *HÔM NAY ĂN GÌ?*, nút chọn món ngẫu nhiên (**Ăn gì giờ?**) và nút mở form thêm món (**Thêm món ăn**).
   * **Khu vực giữa (`TabControl`):** Chia thành 2 tab **All** (toàn bộ món ăn trong hệ thống) và **Tôi đóng góp** (danh sách món ăn do tài khoản đang đăng nhập thêm vào). Mỗi món được hiển thị dưới dạng thẻ `MonAnCard` gồm hình ảnh, tên món, giá tiền, người đóng góp và nút **Xoá**.
   * **Khu vực dưới:** Liên kết **Login / Logout**, nhãn trạng thái xác thực (`Unauthenticated` hoặc `Welcome, <Tên>`), thanh tiến trình tải dữ liệu và hộp chọn số trang (**Page**).
+    
 <p align="center">
 <img width="666" height="729" alt="Homnayangi" src="https://github.com/user-attachments/assets/f213cb17-ce8f-4880-b1be-1363673c8a96" />
 </p>
-* **Màn hình Đăng nhập (`LoginForm`):** Nhập `Username`, `Password`, hộp kiểm *Hiện mật khẩu*, nút **Login** và liên kết **Sign up** để chuyển sang giao diện đăng ký.
+
+  * **Màn hình Đăng nhập (`LoginForm`):** Nhập `Username`, `Password`, hộp kiểm *Hiện mật khẩu*, nút **Login** và liên kết **Sign up** để chuyển sang giao diện đăng ký.
+    
 <p align="center">
 <img width="560" height="394" alt="Loginform" src="https://github.com/user-attachments/assets/a3bb01de-29d1-4ed3-a56d-1be1b492fa78" />
 </p>
-* **Màn hình Đăng ký tài khoản (`SignupForm`):** Nhập thông tin tài khoản (`Username`, `Password`) và thông tin cá nhân (`First name`, `Last name`, `Email`, `Phone`, `Birth`, `Languages`, `Sex`) kèm nút **Clear** và **Submit**.
+
+  * **Màn hình Đăng ký tài khoản (`SignupForm`):** Nhập thông tin tài khoản (`Username`, `Password`) và thông tin cá nhân (`First name`, `Last name`, `Email`, `Phone`, `Birth`, `Languages`, `Sex`) kèm nút **Clear** và **Submit**.
+    
 <p align="center">
 <img width="631" height="712" alt="Signupform" src="https://github.com/user-attachments/assets/3fadde42-38e9-4030-950d-8e9f0c23962c" />
 </p>
-* **Màn hình Món ăn ngẫu nhiên (`RandomMonAn`):** Cửa sổ bật lên hiển thị tên món ăn được hệ thống chọn ngẫu nhiên (ví dụ: *Ăn Hủ tiếu đi!!!!*) cùng hình ảnh minh họa của món đó.
+
+  * **Màn hình Món ăn ngẫu nhiên (`RandomMonAn`):** Cửa sổ bật lên hiển thị tên món ăn được hệ thống chọn ngẫu nhiên (ví dụ: *Ăn Hủ tiếu đi!!!!*) cùng hình ảnh minh họa của món đó.
+    
 <p align="center">
 <img width="450" height="390" alt="Angigio" src="https://github.com/user-attachments/assets/b0b4eb16-d0d9-41fa-8890-3aa67fd2b4f0" />
 </p>
@@ -293,12 +300,13 @@ ngrok version
 # Nạp Authtoken từ tài khoản Ngrok của bạn
 ngrok config add-authtoken <CHUOI_AUTHTOKEN_CUA_BAN>
 ```
-
-> **Lưu ý:** Sau khi cài đặt Ngrok lần đầu, hãy khởi động lại Visual Studio hoặc máy tính để Windows nhận biến môi trường `ngrok`.
+> [!NOTE]
+> Sau khi cài đặt Ngrok lần đầu, hãy khởi động lại Visual Studio hoặc máy tính để Windows nhận biến môi trường `ngrok`.
 
 ### 3.2. Khởi chạy chế độ SERVER (Máy chủ)
 
-> ⚠️ **Quan trọng:** Tại một thời điểm chỉ nên có **1 máy** chạy chế độ Server (nếu dùng chung 1 Authtoken Ngrok miễn phí, bật 2 máy cùng lúc sẽ bị Ngrok ngắt phiên với lỗi `ERR_NGROK_108`).
+> [!IMPORTANT]
+> Tại một thời điểm chỉ nên có **1 máy** chạy chế độ Server (nếu dùng chung 1 Authtoken Ngrok miễn phí, bật 2 máy cùng lúc sẽ bị Ngrok ngắt phiên với lỗi `ERR_NGROK_108`).
 
 1. Tắt ứng dụng Server trên máy cũ (nếu trước đó có máy khác đang làm Server).
 2. Chuột phải vào **Visual Studio 2022** (hoặc file `Lab04_Bai07.exe` trong thư mục `bin\Debug\net8.0-windows\`) → chọn **Run as administrator**.
@@ -348,37 +356,25 @@ ngrok config add-authtoken <CHUOI_AUTHTOKEN_CUA_BAN>
 ## 5. Sơ đồ hoạt động
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant S as Máy Server (Admin)
-    participant N as Kênh đồng bộ (ntfy.sh)
-    participant C as Máy Client (User thường)
-
-    Note over S: Khởi động ứng dụng (Quyền Admin)
-    S->>S: Khởi tạo SQLite & HttpListener (:8080)
-    S->>S: Chạy tiến trình ngầm ngrok http 8080
-    S->>N: POST URL Ngrok mới ([https://xxx.ngrok-free.dev/](https://xxx.ngrok-free.dev/))
-
-    Note over C: Khởi động ứng dụng (Quyền thường)
-    C->>N: GET URL Ngrok mới nhất từ kênh
-    N-->>C: Trả về [https://xxx.ngrok-free.dev/](https://xxx.ngrok-free.dev/)
-    C->>S: GET /api/monan/all?page=1&pageSize=5
-    S-->>C: JSON danh sách món ăn + Ảnh (/images/...)
-
-    Note over C,S: Luồng Đăng nhập & Đồng bộ thời gian thực
-    C->>S: POST /api/auth/login (Username, Password)
-    S-->>C: Trả về Bearer Token
-    S->>S: Bật MessageBox thông báo IP Client vừa đăng nhập
-
-    C->>S: POST /api/monan (Thêm món mới + Ảnh Base64)
-    S->>S: Lưu ảnh, ghi SQLite & tăng DataVersion
-    loop Quét định kỳ mỗi 2 giây
-        C->>S: GET /api/version
-        S-->>C: DataVersion mới
-        C->>S: GET /api/monan/all (Tự động tải lại danh sách)
+flowchart LR
+    subgraph Server ["🖥️ Máy Server (Quyền Admin)"]
+        S1["1. Mở cổng 8080 & SQLite"]
+        S2["2. Chạy đường hầm Ngrok"]
+        S1 --> S2
     end
-```
 
+    N[("☁️ Kênh trung gian<br/>ntfy.sh")]
+
+    subgraph Client ["💻 Máy Client (User thường)"]
+        C1["3. Tự động lấy link Ngrok"]
+        C2["4. Gọi API & Đồng bộ 2s/lần"]
+        C1 --> C2
+    end
+
+    S2 -- "Gửi link Ngrok mới" --> N
+    N -- "Đọc link mới nhất" --> C1
+    C2 <== "Trao đổi JSON & Ảnh<br/>(Đăng nhập / Thêm / Xoá món)" ==> S1
+```
 ---
 
 ## 6. Hướng dẫn sử dụng
