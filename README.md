@@ -232,6 +232,184 @@ Hiển thị HTML (rtbHTML)
 
 ---
 
+# 🍱Bài 7: Hôm Nay Ăn Gì? 
+
+Ứng dụng desktop Windows Forms (C# / .NET) quản lý, đóng góp và gợi ý món ăn ngẫu nhiên theo mô hình **Client – Server phân tán qua Internet**, tích hợp RESTful API Server nhúng (`HttpListener`), cơ sở dữ liệu **SQLite**, đường hầm công khai **Ngrok** và kênh đồng bộ địa chỉ tự động **ntfy.sh**.
+
+---
+
+## 1. Giao diện chương trình
+
+Ứng dụng được thiết kế theo phong cách minh họa ấm áp với 4 màn hình chức năng chính:
+
+* **Màn hình chính (`HomNayAnGi`):**
+  * **Khu vực trên:** Tiêu đề *HÔM NAY ĂN GÌ?*, nút chọn món ngẫu nhiên (**Ăn gì giờ?**) và nút mở form thêm món (**Thêm món ăn**).
+  * **Khu vực giữa (`TabControl`):** Chia thành 2 tab **All** (toàn bộ món ăn trong hệ thống) và **Tôi đóng góp** (danh sách món ăn do tài khoản đang đăng nhập thêm vào). Mỗi món được hiển thị dưới dạng thẻ `MonAnCard` gồm hình ảnh, tên món, giá tiền, người đóng góp và nút **Xoá**.
+  * **Khu vực dưới:** Liên kết **Login / Logout**, nhãn trạng thái xác thực (`Unauthenticated` hoặc `Welcome, <Tên>`), thanh tiến trình tải dữ liệu và hộp chọn số trang (**Page**).
+<p align="center">
+<img width="666" height="729" alt="Homnayangi" src="https://github.com/user-attachments/assets/f213cb17-ce8f-4880-b1be-1363673c8a96" />
+</p>
+* **Màn hình Đăng nhập (`LoginForm`):** Nhập `Username`, `Password`, hộp kiểm *Hiện mật khẩu*, nút **Login** và liên kết **Sign up** để chuyển sang giao diện đăng ký.
+<p align="center">
+<img width="560" height="394" alt="Loginform" src="https://github.com/user-attachments/assets/a3bb01de-29d1-4ed3-a56d-1be1b492fa78" />
+</p>
+* **Màn hình Đăng ký tài khoản (`SignupForm`):** Nhập thông tin tài khoản (`Username`, `Password`) và thông tin cá nhân (`First name`, `Last name`, `Email`, `Phone`, `Birth`, `Languages`, `Sex`) kèm nút **Clear** và **Submit**.
+<p align="center">
+<img width="631" height="712" alt="Signupform" src="https://github.com/user-attachments/assets/3fadde42-38e9-4030-950d-8e9f0c23962c" />
+</p>
+* **Màn hình Món ăn ngẫu nhiên (`RandomMonAn`):** Cửa sổ bật lên hiển thị tên món ăn được hệ thống chọn ngẫu nhiên (ví dụ: *Ăn Hủ tiếu đi!!!!*) cùng hình ảnh minh họa của món đó.
+<p align="center">
+<img width="450" height="390" alt="Angigio" src="https://github.com/user-attachments/assets/b0b4eb16-d0d9-41fa-8890-3aa67fd2b4f0" />
+</p>
+
+---
+
+## 2. Nội dung thực hành
+
+* **Xây dựng ứng dụng mạng theo kiến trúc Client – Server:** Tách biệt hoàn toàn tầng giao diện người dùng (WinForms Client) và tầng xử lý nghiệp vụ, lưu trữ dữ liệu (Embedded RESTful API Server + SQLite).
+* **Lập trình giao tiếp HTTP & RESTful API:** Sử dụng `HttpListener` ở phía Server và `HttpClient` ở phía Client để trao đổi dữ liệu định dạng **JSON** qua các phương thức `GET`, `POST`, `DELETE`.
+* **Xác thực & Phân quyền người dùng:** Cài đặt cơ chế băm mật khẩu bằng **SHA-256**, cấp phát và kiểm tra phiên làm việc bằng **Bearer Token** trong HTTP Header.
+* **Triển khai đường hầm công khai & Đồng bộ động:** Kết hợp `ngrok` để mở cổng dịch vụ `localhost:8080` ra Internet và sử dụng dịch vụ `ntfy.sh` làm kênh báo hiệu (signaling) giúp các máy Client tự động tìm thấy Server mới mà không cần IP tĩnh.
+* **Cập nhật dữ liệu thời gian thực (Real-time Sync):** Sử dụng cơ chế đánh dấu phiên bản dữ liệu (`DataVersion`) và bộ định thời (`Timer`) quét mỗi 2 giây để tự động làm mới giao diện giữa các máy.
+
+---
+
+## 3. Cách thức thực hiện
+
+### 3.1. Cài đặt Ngrok (Thực hiện trên máy sẽ đóng vai trò Server)
+
+Mở **Command Prompt (CMD)** và chạy các lệnh sau:
+
+```cmd
+# Cài đặt Ngrok bản mới nhất
+winget install --id Ngrok.Ngrok
+
+# (Nếu đã cài bản cũ, chạy lệnh cập nhật)
+ngrok update
+
+# Kiểm tra phiên bản (yêu cầu >= 3.30.0 để tránh lỗi ERR_NGROK_121)
+ngrok version
+
+# Nạp Authtoken từ tài khoản Ngrok của bạn
+ngrok config add-authtoken <CHUOI_AUTHTOKEN_CUA_BAN>
+```
+
+> **Lưu ý:** Sau khi cài đặt Ngrok lần đầu, hãy khởi động lại Visual Studio hoặc máy tính để Windows nhận biến môi trường `ngrok`.
+
+### 3.2. Khởi chạy chế độ SERVER (Máy chủ)
+
+> ⚠️ **Quan trọng:** Tại một thời điểm chỉ nên có **1 máy** chạy chế độ Server (nếu dùng chung 1 Authtoken Ngrok miễn phí, bật 2 máy cùng lúc sẽ bị Ngrok ngắt phiên với lỗi `ERR_NGROK_108`).
+
+1. Tắt ứng dụng Server trên máy cũ (nếu trước đó có máy khác đang làm Server).
+2. Chuột phải vào **Visual Studio 2022** (hoặc file `Lab04_Bai07.exe` trong thư mục `bin\Debug\net8.0-windows\`) → chọn **Run as administrator**.
+3. Mở solution và nhấn **`F5`** để chạy.
+4. Chờ **5–8 giây** để Server tự khởi tạo cơ sở dữ liệu `homnayangi.db`, lắng nghe tại `http://localhost:8080/`, mở đường hầm Ngrok và đẩy URL mới lên kênh:
+
+```text
+[https://ntfy.sh/uit-nt106-lab04-nhom-mthu-2026](https://ntfy.sh/uit-nt106-lab04-nhom-mthu-2026)
+```
+
+### 3.3. Khởi chạy chế độ CLIENT (Máy khách)
+
+1. Kéo mã nguồn mới nhất (`git pull`) và Build solution (`Ctrl + Shift + B`).
+2. Mở Visual Studio ở **chế độ bình thường** (hoặc nhấp đúp mở trực tiếp file `Lab04_Bai07.exe` — **tuyệt đối không** chọn *Run as administrator*).
+3. Ứng dụng tự động đọc URL Ngrok mới nhất từ `ntfy.sh` và tải danh sách món ăn về giao diện.
+
+### 3.4. Chuyển quyền Server sang máy thành viên khác
+
+1. **Máy Server cũ:** Đóng hoàn toàn ứng dụng `Lab04_Bai07` (và đảm bảo tiến trình `ngrok.exe` đã tắt). *(Tùy chọn: copy file `homnayangi.db` và thư mục `images/` gửi sang máy mới nếu muốn giữ lại toàn bộ dữ liệu cũ).*
+2. **Máy Server mới:** Cài Ngrok `>= 3.30.0`, nạp Authtoken → chạy ứng dụng bằng quyền **Run as administrator**.
+3. **Các máy Client (kể cả máy Server cũ):** Chạy ứng dụng ở chế độ **người dùng thường**, hệ thống tự động kết nối tới máy Server mới mà không cần sửa code.
+
+---
+
+## 4. Giao thức trao đổi dữ liệu
+
+* **Giao thức truyền tải:** `HTTP/1.1` qua đường hầm bảo mật `HTTPS` của Ngrok (`ngrok-skip-browser-warning: true`).
+* **Định dạng dữ liệu:** `application/json; charset=utf-8` (hình ảnh tải lên được mã hóa sang chuỗi **Base64** trong payload JSON, sau đó Server giải mã lưu thành tệp ảnh vật lý và phục vụ qua HTTP GET).
+* **Cơ chế xác thực:** Gửi kèm Header `Authorization: Bearer <token>` đối với các API yêu cầu đăng nhập.
+
+### Danh sách các API Endpoint chính
+
+| Phương thức | Endpoint | Xác thực | Mô tả chức năng & Dữ liệu trao đổi |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/signup` | Không | Nhận JSON thông tin đăng ký (`Username`, `Password`, `Email`, `Phone`,...), kiểm tra Regex và lưu mật khẩu băm SHA-256 vào SQLite. |
+| `POST` | `/api/auth/login` | Không | Xác thực tài khoản, trả về `Token` phiên làm việc, đồng thời trích xuất IP (`X-Forwarded-For`) để thông báo lên màn hình Server. |
+| `GET` | `/api/monan/all?page={p}&pageSize={s}` | Không | Trả về JSON danh sách món ăn phân trang (`Data`, `TotalPages`, `TotalItems`). |
+| `GET` | `/api/monan/mine?page={p}&pageSize={s}` | Bearer Token | Trả về JSON danh sách món ăn do chính người dùng hiện tại đóng góp. |
+| `GET` | `/api/monan/random?onlyMine={bool}` | Tùy chọn | Chọn ngẫu nhiên 1 món ăn (`ORDER BY RANDOM() LIMIT 1`) từ toàn bộ danh sách hoặc danh sách cá nhân. |
+| `POST` | `/api/monan` | Bearer Token | Nhận JSON món ăn mới kèm ảnh Base64, lưu tệp ảnh vào `images/`, thêm bản ghi vào SQLite và tăng `DataVersion`. |
+| `DELETE` | `/api/monan/{id}` | Bearer Token | Xóa món ăn theo `Id` khỏi cơ sở dữ liệu và tăng `DataVersion`. |
+| `GET` | `/api/version` | Không | Trả về dấu thời gian phiên bản dữ liệu hiện tại (`DataVersion`) để Client kiểm tra thay đổi mỗi 2 giây. |
+| `GET` | `/images/{filename}` | Không | Trả về luồng dữ liệu nhị phân (`image/jpeg`, `image/png`) của ảnh món ăn lưu trên Server. |
+
+---
+
+## 5. Sơ đồ hoạt động
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Máy Server (Admin)
+    participant N as Kênh đồng bộ (ntfy.sh)
+    participant C as Máy Client (User thường)
+
+    Note over S: Khởi động ứng dụng (Quyền Admin)
+    S->>S: Khởi tạo SQLite & HttpListener (:8080)
+    S->>S: Chạy tiến trình ngầm ngrok http 8080
+    S->>N: POST URL Ngrok mới ([https://xxx.ngrok-free.dev/](https://xxx.ngrok-free.dev/))
+
+    Note over C: Khởi động ứng dụng (Quyền thường)
+    C->>N: GET URL Ngrok mới nhất từ kênh
+    N-->>C: Trả về [https://xxx.ngrok-free.dev/](https://xxx.ngrok-free.dev/)
+    C->>S: GET /api/monan/all?page=1&pageSize=5
+    S-->>C: JSON danh sách món ăn + Ảnh (/images/...)
+
+    Note over C,S: Luồng Đăng nhập & Đồng bộ thời gian thực
+    C->>S: POST /api/auth/login (Username, Password)
+    S-->>C: Trả về Bearer Token
+    S->>S: Bật MessageBox thông báo IP Client vừa đăng nhập
+
+    C->>S: POST /api/monan (Thêm món mới + Ảnh Base64)
+    S->>S: Lưu ảnh, ghi SQLite & tăng DataVersion
+    loop Quét định kỳ mỗi 2 giây
+        C->>S: GET /api/version
+        S-->>C: DataVersion mới
+        C->>S: GET /api/monan/all (Tự động tải lại danh sách)
+    end
+```
+
+---
+
+## 6. Hướng dẫn sử dụng
+
+1. **Xem danh sách món ăn:**
+   * Mở ứng dụng ở tab **All** để xem toàn bộ món ăn hiện có trong cơ sở dữ liệu.
+   * Sử dụng hộp chọn **Page** ở góc dưới bên phải để chuyển trang (mỗi trang hiển thị 5 món ăn).
+2. **Đăng ký & Đăng nhập tài khoản:**
+   * Bấm liên kết **Login** ở góc dưới bên trái → chọn **Sign up** nếu chưa có tài khoản.
+   * Nhập đầy đủ thông tin (Email đúng định dạng `ten@domain.com`, Số điện thoại Việt Nam đủ 10 chữ số) và bấm **Submit**.
+   * Quay lại form đăng nhập, nhập `Username` và `Password` → bấm **Login**. Trạng thái góc dưới chuyển sang `Welcome, <Tên>`.
+3. **Thêm & Xóa món ăn:**
+   * Sau khi đăng nhập, bấm nút **Thêm món ăn**, điền tên món, giá tiền, địa chỉ, mô tả và chọn hình ảnh từ máy tính để lưu.
+   * Món ăn mới sẽ tự động đồng bộ sang màn hình của tất cả thành viên khác trong vòng **2 giây**.
+   * Chọn tab **Tôi đóng góp** để xem các món của riêng bạn, hoặc bấm nút **Xoá** trên thẻ món ăn để gỡ bỏ.
+4. **Gợi ý món ăn ngẫu nhiên:**
+   * Chọn tab **All** (gợi ý trong tất cả món) hoặc tab **Tôi đóng góp** (gợi ý trong danh sách cá nhân) → bấm nút **Ăn gì giờ?** để ứng dụng chọn ngẫu nhiên một món ăn.
+
+---
+
+## 7. Xử lý sự cố thường gặp
+
+| Lỗi / Hiện tượng | Nguyên nhân | Cách khắc phục |
+| :--- | :--- | :--- |
+| Client báo lỗi `'T' is an invalid start of a value` | Server chưa chạy hoặc đường hầm Ngrok trên Server chưa sẵn sàng nên trả về trang HTML báo offline | Kiểm tra máy Server đã chạy bằng quyền **Administrator** chưa; mở `https://ntfy.sh/uit-nt106-lab04-nhom-mthu-2026` xem đã có link mới chưa. |
+| `ERR_NGROK_121` | Phiên bản Ngrok Agent trên máy quá cũ (`< 3.30.0`) | Mở CMD chạy `ngrok update` hoặc `winget upgrade --id Ngrok.Ngrok`. |
+| `ERR_NGROK_108` | Có từ 2 máy trở lên bật Server cùng lúc bằng chung 1 Authtoken Ngrok miễn phí | Tắt ứng dụng và mở Task Manager kết thúc tiến trình `ngrok.exe` trên máy Server cũ trước khi bật máy mới. |
+| Client không nhận chế độ Client mà tự mở Server cục bộ | Người dùng mở Visual Studio hoặc file `.exe` bằng quyền Administrator | Đóng ứng dụng và mở lại bằng cách nhấp đúp chuột trái bình thường (không chọn *Run as administrator*). |
+| Lỗi cảnh báo định dạng khi đăng ký tài khoản | Nhập sai cấu trúc Email hoặc số điện thoại không đúng 10 chữ số đầu số Việt Nam (`03, 05, 07, 08, 09`) | Nhập lại Email hợp lệ (ví dụ: `ten@gmail.com`) và số điện thoại đủ 10 số. |
+
+---
 <p align="center">
   <b> LAB 4 – WORKING WITH WEB SERVER IN C#</b>
   <br>
