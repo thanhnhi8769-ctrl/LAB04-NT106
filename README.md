@@ -340,31 +340,10 @@ File.ReadAllText -> Hiển thị (rtbContent)
 3. Nhấn `Ctrl + Shift + B` để Build Solution.
 4. Nhấn `F5` để chạy chương trình.
 5. Nhập URL cần tải, ví dụ `https://portal.uit.edu.vn`.
-
-<!-- 🖼️ CHÈN ẢNH 2: Màn hình đã nhập URL vào ô "Địa chỉ URL" -->
-<img width="569" height="680" alt="Screenshot 2026-11-23 184858" src="https://github.com/user-attachments/assets/d061b1a9-c9a7-4afc-b668-76fd6fab0541" />
-
-
 6. Nhấn **Chọn...** để chọn nơi lưu file.
-
-<!-- 🖼️ CHÈN ẢNH 3: Hộp thoại SaveFileDialog khi chọn nơi lưu (tên mặc định uit.html) -->
-<img width="582" height="673" alt="Screenshot 2026-11-23 184739" src="https://github.com/user-attachments/assets/92506a48-d992-46da-83ba-3e6e3bb93f7f" />
-
 7. Nhấn **Tải xuống**, chờ thông báo thành công.
-
-<!-- 🖼️ CHÈN ẢNH 4: Kết quả tải thành công: MessageBox "Đã tải và lưu file thành công!" + trạng thái "Tải thành công!" + nội dung HTML trong rtbContent -->
-<img width="574" height="683" alt="Screenshot 2026-11-23 185131" src="https://github.com/user-attachments/assets/74ac8274-b9ca-41dd-8638-29ffb3832945" />
-
 8. Mở file `.html` đã lưu để kiểm tra.
-
-<!-- 🖼️ CHÈN ẢNH 5: File uit.html đã lưu trong thư mục (hoặc mở file bằng trình duyệt/Notepad) -->
-<img width="922" height="929" alt="Screenshot 2026-11-23 185236" src="https://github.com/user-attachments/assets/8bc376fb-c287-475a-8011-78b157523f0e" />
-
 9. (Tuỳ chọn) Thử bỏ trống URL hoặc đường dẫn để xem thông báo lỗi.
-
-<!-- 🖼️ CHÈN ẢNH 6 (tuỳ chọn): Thông báo lỗi đỏ "Vui lòng nhập đủ URL và đường dẫn!" -->
-<img width="572" height="677" alt="Screenshot 2026-11-23 185350" src="https://github.com/user-attachments/assets/204249d7-2629-4877-a01c-114953fcd46f" />
-
 
 > [!NOTE]
 > Chương trình lưu trang web dưới dạng file HTML và hiển thị mã nguồn dạng văn bản, không tải kèm hình ảnh, CSS hay JavaScript của trang.
@@ -494,33 +473,9 @@ Nhập URL (txtURL)
 4. Máy cần có **WebView2 Runtime** (đã có sẵn trên Windows 10/11 có Edge).
 5. Nhấn `Ctrl + Shift + B` để Build Solution, rồi `F5` để chạy.
 6. Nhập URL (ví dụ `https://portal.uit.edu.vn`) và nhấn **Tải trang (Load)**.
-
-<!-- 🖼️ CHÈN ẢNH 2: Trang web hiển thị trong WebView sau khi nhấn Load -->
-<img width="832" height="869" alt="Screenshot 2026-11-23 185653" src="https://github.com/user-attachments/assets/02990ad7-101a-4384-85fc-eac24e1e8fb5" />
-
 7. Nhấn **Tải HTML**, chọn nơi lưu file.
-
-<!-- 🖼️ CHÈN ẢNH 3: Hộp thoại SaveFileDialog (page.html) -->
-<img width="933" height="519" alt="Screenshot 2026-11-23 185811" src="https://github.com/user-attachments/assets/e37c72a7-d060-456c-8988-63e1fd7701a2" />
-
-<!-- 🖼️ CHÈN ẢNH 4: MessageBox "Tải file HTML thành công!" -->
-<img width="831" height="874" alt="Screenshot 2026-11-23 185824" src="https://github.com/user-attachments/assets/c1073e2b-e9c7-4f02-a225-788f932ba2f9" />
-
 8. Nhấn **Tải Ảnh**, chọn thư mục lưu hình ảnh.
-
-<!-- 🖼️ CHÈN ẢNH 5: Hộp thoại FolderBrowserDialog chọn thư mục -->
-<img width="928" height="559" alt="Screenshot 2026-11-23 190009" src="https://github.com/user-attachments/assets/b3f77b44-4cb0-4757-bfa1-8f8d0897fbd3" />
-
-<!-- 🖼️ CHÈN ẢNH 6: MessageBox "Đã tải thành công X hình ảnh vào thư mục..." -->
-<img width="847" height="866" alt="Screenshot 2026-11-23 190022" src="https://github.com/user-attachments/assets/2f92fb31-a627-4bef-8ca8-6f3c1b701e0f" />
-
-<!-- 🖼️ CHÈN ẢNH 7: Thư mục chứa các ảnh đã tải về -->
-<img width="503" height="245" alt="Screenshot 2026-11-23 190340" src="https://github.com/user-attachments/assets/00847f1d-3acc-40e2-ad55-f3206796325b" />
-
 9. Nhấn **Xem Code** để xem mã nguồn HTML.
-
-<!-- 🖼️ CHÈN ẢNH 8: Cửa sổ "Mã nguồn HTML" hiển thị code -->
-<img width="787" height="594" alt="Screenshot 2026-11-23 190457" src="https://github.com/user-attachments/assets/e2f3b74a-5d7f-462c-915f-b19411fded3a" />
 
 > [!NOTE]
 > - Chương trình dùng **WebView2** nên trang web được hiển thị đầy đủ như trình duyệt thật (khác với Bài 1 chỉ hiển thị mã nguồn dạng văn bản).
