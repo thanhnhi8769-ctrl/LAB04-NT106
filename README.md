@@ -482,7 +482,222 @@ Nhập URL (txtURL)
 > - Chức năng **Tải Ảnh** chỉ tải các ảnh nằm trong thẻ `<img>`; ảnh nền CSS hoặc ảnh tải động bằng JavaScript sẽ không được tải.
 
 ---
+## 📄 BÀI 4 – HỆ THỐNG ĐẶT VÉ XEM PHIM (CINEMA BOOKING – CLIENT/SERVER)
 
+### 🖼️ Giao diện chương trình
+
+**Giao diện chính – Nhập tên khách hàng**
+
+<p align="center">
+
+<!-- 🖼️ CHÈN ẢNH 1: Form chính (Lab04_Bai04) với ô nhập tên khách hàng và nút "Chọn phim đang chiếu (Beta Cinemas)" -->
+<img width="784" height="266" alt="Screenshot 2026-11-23 191217" src="https://github.com/user-attachments/assets/bd25b45e-9a20-4e2f-bcc8-3304eba20576" />
+
+
+</p>
+
+**Giao diện Danh sách phim và Đặt vé**
+
+<p align="center">
+
+<!-- 🖼️ CHÈN ẢNH 2: Form "Phim đang chiếu - Beta Cinemas" hiển thị danh sách phim (poster, tên, link, mô tả, nút Đặt vé) -->
+<img width="726" height="603" alt="Screenshot 2026-11-23 191302" src="https://github.com/user-attachments/assets/90fd7763-66d2-4a45-bf17-befb19b203f1" />
+
+<!-- 🖼️ CHÈN ẢNH 3: Form Booking (sơ đồ ghế, chọn phòng chiếu, tổng tiền) -->
+<img width="516" height="283" alt="Screenshot 2026-11-23 191647" src="https://github.com/user-attachments/assets/2c336d64-81d8-497f-95d0-3c0bbd7a92e0" />
+
+
+</p>
+
+**Giao diện Quản trị (Admin)**
+
+<p align="center">
+
+<!-- 🖼️ CHÈN ẢNH 4: Form Admin sau khi bấm "Xuất thống kê" (ListView thống kê doanh thu + ProgressBar) -->
+<img width="360" height="167" alt="Screenshot 2026-11-23 191641" src="https://github.com/user-attachments/assets/05e47a67-8675-426f-8a4c-fc3051e6bddc" />
+<img width="570" height="226" alt="Screenshot 2026-11-23 191634" src="https://github.com/user-attachments/assets/b1c2a7f3-498d-4f48-9825-485b8edb931c" />
+
+
+</p>
+
+### 🎯 Nội dung thực hành
+
+- Xây dựng ứng dụng **C# Windows Forms** mô phỏng hệ thống đặt vé xem phim theo mô hình **Client – Server**.
+- Sử dụng **TCP Socket** (`TcpListener`, `TcpClient`) để Server và nhiều Client trao đổi dữ liệu theo thời gian thực.
+- Server quản lý trạng thái ghế của từng phim theo từng phòng chiếu, xử lý **tranh chấp đặt ghế** khi nhiều Client cùng đặt.
+- Sử dụng **đa luồng** (`Thread`) để Server phục vụ nhiều Client và Client lắng nghe thông báo từ Server.
+- Lấy danh sách phim đang chiếu từ website **Beta Cinemas** bằng `HttpClient` và `Regex`, lưu/đọc dữ liệu dạng **JSON** (`System.Text.Json`).
+- Hiển thị trang chi tiết phim bằng **WebView2**.
+- Tính tiền vé theo hệ số giá của từng loại ghế, xuất hóa đơn và ghi dữ liệu bán vé ra file `input5.txt`.
+- Form quản trị (có mật khẩu) thống kê doanh thu, xếp hạng phim và ghi báo cáo ra file `output5.txt`.
+- Xây dựng giao diện tùy biến: form không viền, ảnh nền GIF động, kéo thả form bằng `user32.dll`.
+
+### 🛠️ Cách thức thực hiện
+
+**1. Cấu trúc project**
+
+| File | Chức năng |
+|---|---|
+| `Program.cs` | Điểm khởi chạy, khởi động Server (nếu là máy chủ) rồi mở form chính |
+| `Bai04.cs` (`Lab04_Bai04`) | Form chính: nhập tên khách hàng, chọn phim, vào khu vực Admin |
+| `Lab04_Bai04_DanhSachPhim.cs` | Form danh sách phim, lấy dữ liệu từ website, xem chi tiết phim (WebView2) |
+| `Lab04_Bai04_PhimOnline.cs` | Model `PhimOnline` và lớp `PhimScraper` (lấy dữ liệu web, đọc/ghi JSON) |
+| `Lab04_Bai04_BookingForm.cs` | Form đặt vé (Client): chọn ghế, thanh toán, nhận cập nhật từ Server |
+| `Lab04_Bai04_Server.cs` | Server TCP: quản lý ghế, xử lý đặt vé, thông báo cập nhật cho mọi Client |
+| `Lab04_Bai04_PasswordForm.cs` | Form nhập mật khẩu Admin |
+| `Lab04_Bai04_AdminForm.cs` | Form thống kê doanh thu, xếp hạng, ghi file kết quả |
+| `Lab04_Bai04_ThongKePhim.cs` | Model dữ liệu thống kê phim |
+
+**2. Khởi động chương trình (`Program.cs`)**
+
+- Gọi `ApplicationConfiguration.Initialize()`.
+- Đọc địa chỉ Server từ file `serverip.txt` cạnh file `.exe`; nếu không có file thì dùng `127.0.0.1` (máy này vừa là Server vừa là Client).
+- Nếu là máy chủ (`LaMayChu`), gọi `Lab04_Bai04_Server.StartServer()` để mở Server tại cổng **9090**.
+- Hiển thị hộp thoại chẩn đoán Server (bật/tắt bằng hằng số `HIEN_CHAN_DOAN`).
+- Chạy form chính `Lab04_Bai04`.
+
+**3. Form chính (`Lab04_Bai04`)**
+
+- Hiển thị ảnh nền **GIF động**; dùng `Timer` (80ms) và `SelectActiveFrame()` để chuyển từng khung hình.
+- Người dùng nhập tên khách hàng trong `txtCustomerName`; nếu để trống sẽ báo lỗi đỏ trên `lblThongBao`.
+- Nút **🌐 Chọn phim đang chiếu (Beta Cinemas)** được tạo bằng code, mở `Lab04_Bai04_DanhSachPhim` kèm tên khách hàng.
+- Liên kết Admin mở `Lab04_Bai04_PasswordForm`; nhập đúng mật khẩu sẽ mở `Lab04_Bai04_AdminForm`.
+- Hỗ trợ kéo form bằng chuột qua `ReleaseCapture()` và `SendMessage()` (gọi `user32.dll`), cùng các nút thu nhỏ, phóng to, đóng.
+
+**4. Lấy danh sách phim từ website (`PhimScraper`)**
+
+- Dùng `HttpClient` gửi HTTP GET đến `https://betacinemas.vn/phim.htm` (cấu hình `User-Agent`, `Accept-Language`, timeout 30 giây).
+- Dùng `Regex` tách từng khối `film-item` trong HTML để lấy: tên phim, link chi tiết, ảnh poster, thể loại và thời lượng.
+- Truy cập từng trang chi tiết để lấy mô tả từ thẻ meta `og:description`; `ProgressBar` chạy theo tiến độ từng phim (`IProgress<int>`).
+- Nếu không tách được phim nào, tự động ghi file `debug_phim.html` để kiểm tra lại cấu trúc trang.
+- Lưu danh sách vào `phim.json` bằng `JsonSerializer` (giữ nguyên tiếng Việt có dấu); lần mở sau đọc từ file này nếu có sẵn.
+
+**5. Form danh sách phim (`Lab04_Bai04_DanhSachPhim`)**
+
+- Form được tạo hoàn toàn bằng code, dùng `FlowLayoutPanel` hiển thị mỗi phim thành một mục (poster, tên, link, mô tả, nút **Đặt vé**).
+- Khi mở form, đọc dữ liệu từ `phim.json`; nút **Lấy dữ liệu từ website** gọi `PhimScraper.LayDanhSachAsync()` bất đồng bộ (`async/await`) để không làm treo giao diện.
+- Nhấn vào poster, tên, link hoặc mô tả sẽ mở form `Lab04_Bai04_ChiTietPhim` dùng **WebView2** hiển thị trang chi tiết (tự động ẩn popup chọn tỉnh/rạp bằng JavaScript).
+- Nhấn **Đặt vé** mở `Lab04_Bai04_BookingForm`.
+
+**6. Server (`Lab04_Bai04_Server`)**
+
+- Dùng `TcpListener` lắng nghe tại `IPAddress.Any`, cổng `9090`; mỗi Client được phục vụ trên một `Thread` riêng.
+- Lưu ghế đã đặt trong `Dictionary<string, HashSet<string>>` với khóa là `tên phim_phòng chiếu`; dùng `lock` để đảm bảo an toàn đa luồng.
+- Dữ liệu ghế được lưu bền vững vào file `Lab03_Bai04_Seats.txt` (mỗi dòng dạng `movieKey|A1,A2,...`) và nạp lại khi Server khởi động.
+- Xử lý các lệnh từ Client:
+
+| Lệnh Client gửi | Ý nghĩa | Phản hồi của Server |
+|---|---|---|
+| `GET_SEATS\|movieKey` | Lấy danh sách ghế đã đặt của một suất | `SEATS\|movieKey\|A1,A2,...` |
+| `GET_ALL` | Lấy toàn bộ dữ liệu ghế | `ALL_DATA\|...` |
+| `BOOK\|movieKey\|A1,B2,...` | Đặt các ghế đã chọn | `SUCCESS\|...` hoặc `FAILED\|...` |
+
+- Khi đặt vé thành công, Server **broadcast** `SEAT_UPDATED|movieKey|...` đến tất cả Client để cập nhật sơ đồ ghế ngay lập tức.
+- Nếu một ghế trong danh sách đã có người đặt, Server từ chối toàn bộ yêu cầu (`FAILED`) để tránh đặt trùng.
+
+**7. Form đặt vé – Client (`Lab04_Bai04_BookingForm`)**
+
+- Khi mở form, Client kết nối Server bằng `TcpClient` (thử lại tối đa 10 lần), sau đó tạo một luồng riêng (`ListenFromServer`) để nhận thông báo liên tục.
+- Chọn **phòng chiếu** bằng `cbPhongChieu`; mỗi lần đổi phòng, Client gửi `GET_SEATS` để tải lại trạng thái ghế.
+- Sơ đồ ghế gồm 15 ghế (hàng A, B, C – mỗi hàng 5 ghế) với 3 trạng thái màu:
+  - Màu mặc định: ghế trống.
+  - Màu xanh lá (`Green`): ghế đang chọn.
+  - Màu đỏ (`Red`): ghế đã có người đặt (bị vô hiệu hóa).
+- Tính tiền theo hệ số giá:
+
+| Ghế | Hệ số giá |
+|---|---|
+| `A1`, `A5`, `C1`, `C5` | 0.25 × giá chuẩn |
+| `B2`, `B3`, `B4` | 2.0 × giá chuẩn |
+| Các ghế còn lại | 1.0 × giá chuẩn |
+
+- Nhấn **Thanh toán**: Client gửi lệnh `BOOK`, đồng thời chờ phản hồi tối đa 3 giây (báo lỗi nếu Server không phản hồi).
+  - `SUCCESS`: hiển thị hóa đơn trong `rtbHoaDon`, ghi dữ liệu vào `input5.txt`, khóa các ghế vừa đặt.
+  - `FAILED`: báo cảnh báo tranh chấp ghế và tải lại trạng thái ghế.
+- Khi Client khác đặt vé, thông điệp `SEAT_UPDATED` từ Server giúp sơ đồ ghế cập nhật ngay; nếu ghế đang chọn bị người khác đặt trước, chương trình báo "Ghế bạn chọn vừa có người khác đặt!".
+- Cập nhật giao diện từ luồng nền bằng `Invoke()` (hàm `RunOnUI`).
+
+**8. Ghi dữ liệu bán vé (`input5.txt`)**
+
+- Mỗi phim/phòng lưu thành 5 dòng liên tiếp: tên phim, giá vé chuẩn, phòng chiếu, tổng số vé (mặc định 15), số vé đã bán.
+- Khi thanh toán thành công, chương trình cộng thêm số vé vừa đặt vào đúng phim và phòng, hoặc tạo mục mới nếu chưa có.
+
+**9. Form quản trị (`PasswordForm` và `AdminForm`)**
+
+- `PasswordForm`: ô nhập mật khẩu ẩn ký tự (`PasswordChar = '*'`), kiểm tra mật khẩu, báo lỗi nếu bỏ trống hoặc sai.
+- `AdminForm` – nút **Xuất thống kê**:
+  - Đọc file `input5.txt`, kiểm tra tồn tại và dữ liệu hợp lệ.
+  - Tính các chỉ tiêu: số vé tồn, tỉ lệ bán ra (%), doanh thu = số vé bán × giá chuẩn.
+  - Sắp xếp theo doanh thu giảm dần bằng LINQ (`OrderByDescending`) và đánh số **xếp hạng**.
+  - Hiển thị kết quả trong `ListView` (chế độ `Details`, có lưới), `ProgressBar` thể hiện tiến độ xử lý.
+- `AdminForm` – nút **Ghi File**: dùng `SaveFileDialog` và `StreamWriter` (UTF-8) ghi bảng thống kê ra file `output5.txt`.
+
+### 📡 Giao thức trao đổi dữ liệu
+
+| Thành phần | Chức năng |
+|---|---|
+| `TCP Socket` (`TcpListener`, `TcpClient`) | Truyền dữ liệu đặt vé giữa Client và Server |
+| `StreamReader` / `StreamWriter` | Gửi/nhận thông điệp dạng văn bản, mỗi dòng một lệnh, phân tách bằng ký tự `\|` |
+| `Thread` | Server phục vụ nhiều Client, Client lắng nghe Server |
+| `HttpClient` | Lấy danh sách phim từ website Beta Cinemas |
+| `Regex` | Phân tích HTML để trích xuất thông tin phim |
+| `System.Text.Json` | Lưu/đọc danh sách phim (`phim.json`) |
+| `WebView2` | Hiển thị trang chi tiết phim |
+| File văn bản | `Lab03_Bai04_Seats.txt` (ghế), `input5.txt` (bán vé), `output5.txt` (báo cáo) |
+
+**Quy trình xử lý:**
+
+1. Chương trình khởi động, máy chủ mở Server cổng 9090.
+2. Người dùng nhập tên khách hàng, mở danh sách phim (lấy từ website hoặc từ `phim.json`).
+3. Chọn phim, chọn phòng chiếu; Client kết nối Server và tải trạng thái ghế.
+4. Chọn ghế, nhấn **Thanh toán** → Client gửi lệnh `BOOK`.
+5. Server kiểm tra ghế còn trống, cập nhật dữ liệu rồi trả `SUCCESS`/`FAILED`.
+6. Server broadcast `SEAT_UPDATED` đến mọi Client đang kết nối.
+7. Client hiển thị hóa đơn, ghi `input5.txt`; Admin thống kê và xuất `output5.txt`.
+
+**Sơ đồ hoạt động:**
+
+```text
+Client 1                        Server (TCP :9090)                      Client 2
+   |                                   |                                    |
+   |-- GET_SEATS|phim_phòng ---------->|                                    |
+   |<-- SEATS|phim_phòng|A1,A2 --------|                                    |
+   |                                   |<------- GET_SEATS|phim_phòng ------|
+   |                                   |-------- SEATS|phim_phòng|A1,A2 --->|
+   |                                   |                                    |
+   |-- BOOK|phim_phòng|B2,B3 --------->|                                    |
+   |                                   |  Kiểm tra ghế còn trống            |
+   |                                   |  Lưu Lab03_Bai04_Seats.txt         |
+   |<-- SUCCESS|Đặt vé thành công! ----|                                    |
+   |<-- SEAT_UPDATED|...|A1,A2,B2,B3 --|-- SEAT_UPDATED|...|A1,A2,B2,B3 -->|
+   |                                   |                                    |
+   |  Ghi input5.txt, hiện hóa đơn     |      Cập nhật sơ đồ ghế (ghế đỏ)   |
+   |                                   |                                    |
+   |-- BOOK|phim_phòng|B2 (đã có) ---->|  (từ Client khác)                  |
+   |<-- FAILED|Ghế đã có người đặt ----|                                    |
+```
+
+### ▶️ Hướng dẫn sử dụng
+
+1. Mở solution `Lab04` bằng Microsoft Visual Studio.
+2. Chọn project `Bai04` làm **Startup Project**.
+3. Restore các gói NuGet nếu chưa có: `Microsoft.Web.WebView2`, `System.Data.SQLite`, `SQLitePCLRaw.bundle_e_sqlite3`.
+4. Nhấn `Ctrl + Shift + B` để Build Solution, rồi `F5` để chạy.
+5. **Chế độ 1 máy** (Server và Client cùng một máy): không cần cấu hình, mặc định dùng `127.0.0.1`.
+6. **Chế độ nhiều máy**: trên các máy Client, tạo file `serverip.txt` cạnh file `.exe`, ghi địa chỉ IP của máy chủ; trên máy chủ mở cổng **9090** trong tường lửa.
+7. Nhập **tên khách hàng** ở form chính.
+8. Nhấn **Chọn phim đang chiếu (Beta Cinemas)**, nhấn **Lấy dữ liệu từ website** để tải danh sách phim.
+9. (Tuỳ chọn) Nhấn vào poster/tên phim để xem trang chi tiết.
+10. Nhấn **Đặt vé** ở phim muốn xem, chọn **phòng chiếu** và các **ghế**.
+11. Nhấn **Thanh toán** để đặt vé.
+12. Mở thêm một Client khác (máy khác hoặc chạy thêm một bản) để thử **tranh chấp ghế** và **đồng bộ thời gian thực**.
+13. Quay lại form chính, nhấn liên kết **Admin**, nhập mật khẩu.
+14. Nhấn **Xuất thống kê** để xem doanh thu, rồi **Ghi File** để lưu `output5.txt`.
+
+> [!NOTE]
+> - Server chỉ chạy trên máy có `serverip.txt` trống hoặc ghi `127.0.0.1`; các máy Client khác phải trỏ đúng IP của máy chủ.
+> - Dữ liệu phim phụ thuộc cấu trúc HTML của website Beta Cinemas; nếu website thay đổi, cần cập nhật lại hàm `TachPhim()`.
+> - Mỗi phòng chiếu có 15 ghế; trạng thái ghế được lưu trong `Lab03_Bai04_Seats.txt` nên vẫn giữ nguyên khi khởi động lại Server.
 ---
 
 # 🍱Bài 7: Hôm Nay Ăn Gì? 
