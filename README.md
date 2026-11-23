@@ -231,6 +231,304 @@ Hiển thị HTML (rtbHTML)
 > Chương trình hiển thị mã nguồn HTML dưới dạng văn bản, không render thành giao diện website.
 
 ---
+## 📄 BÀI 2 – TẢI TRANG WEB VÀ LƯU THÀNH FILE (DOWNLOAD WEB PAGE)
+
+### 🖼️ Giao diện chương trình
+
+**Giao diện Tải trang web**
+
+<p align="center">
+
+<!-- 🖼️ CHÈN ẢNH 1: Giao diện ban đầu của Bài 2 (form "TẢI TRANG WEB" khi vừa mở, chưa tải gì) -->
+<img width="581" height="695" alt="Screenshot 2026-11-23 183139" src="https://github.com/user-attachments/assets/272e57f8-a21e-4cc0-9175-7a0a22740385" />
+
+
+</p>
+
+### 🎯 Nội dung thực hành
+
+- Xây dựng ứng dụng **C# Windows Forms** để tải nội dung một trang web về máy và lưu thành file `.html`.
+- Sử dụng **HTTP/HTTPS** để giao tiếp với Web Server và tải dữ liệu về.
+- Sử dụng `WebClient.DownloadFile()` để tải trang web và lưu trực tiếp xuống ổ đĩa.
+- Sử dụng `SaveFileDialog` để người dùng chọn vị trí và tên file lưu.
+- Đọc lại file đã lưu bằng `File.ReadAllText()` và hiển thị nội dung trong `RichTextBox`.
+- Kiểm tra dữ liệu đầu vào và xử lý lỗi bằng `try-catch`.
+
+### 🛠️ Cách thức thực hiện
+
+**1. Khởi tạo giao diện (`Bai02Form`)**
+
+- Khởi tạo Windows Forms bằng `InitializeComponent()`.
+- Sử dụng `txtURL` để nhập địa chỉ trang web cần tải.
+- Sử dụng `txtFilePath` để hiển thị đường dẫn file sẽ lưu.
+- Sử dụng `btnBrowse` để mở hộp thoại chọn nơi lưu file.
+- Sử dụng `btnDownload` để thực hiện tải trang web, `btnThoat` để đóng chương trình.
+- Sử dụng `lblTrangThai` để hiển thị trạng thái xử lý (đang tải, thành công, lỗi).
+- Sử dụng `rtbContent` để hiển thị nội dung HTML sau khi tải, thiết lập `ReadOnly = true`.
+
+**2. Chọn nơi lưu file (`btnBrowse_Click()`)**
+
+- Khi người dùng nhấn **Chọn...**, sự kiện `btnBrowse_Click()` được kích hoạt.
+- Tạo `SaveFileDialog` với bộ lọc `HTML Files|*.html|All Files|*.*`.
+- Đặt tên file mặc định là `uit.html`.
+- Nếu người dùng chọn **OK**, gán đường dẫn đã chọn vào `txtFilePath.Text`.
+- Sử dụng `using` để tự động giải phóng tài nguyên của hộp thoại.
+
+**3. Xử lý sự kiện tải xuống (`btnDownload_Click()`)**
+
+- Khi người dùng nhấn **Tải xuống**, sự kiện `btnDownload_Click()` được kích hoạt.
+- Lấy URL và đường dẫn file bằng `Text.Trim()`.
+- Kiểm tra rỗng bằng `string.IsNullOrEmpty()`, nếu thiếu thì báo lỗi màu đỏ trên `lblTrangThai`.
+- Cập nhật trạng thái "Đang tải..." và gọi `Application.DoEvents()` để giao diện hiển thị ngay.
+- Tạo `WebClient` và gọi `DownloadFile(url, filePath)` để tải trang web và lưu thành file.
+- Đọc nội dung file vừa lưu bằng `File.ReadAllText()` và gán vào `rtbContent.Text`.
+- Hiển thị "Tải thành công!" và thông báo bằng `MessageBox.Show()`.
+
+**4. Xử lý lỗi và thoát chương trình**
+
+- Sử dụng `try-catch` bắt mọi ngoại lệ phát sinh (URL sai, mất kết nối, không có quyền ghi file...).
+- Hiển thị nội dung lỗi trên `lblTrangThai` bằng màu đỏ (`Color.Red`).
+- Nút **Thoát** gọi `this.Close()` để đóng ứng dụng.
+
+### 📡 Giao thức trao đổi dữ liệu
+
+| Thành phần | Chức năng |
+|---|---|
+| `HTTP GET` | Yêu cầu lấy nội dung trang web |
+| `WebClient` | Gửi HTTP Request và tải dữ liệu về máy |
+| `SaveFileDialog` | Chọn vị trí và tên file lưu |
+| `File.ReadAllText` | Đọc lại nội dung file đã lưu |
+| `RichTextBox` | Hiển thị mã nguồn HTML đã tải |
+
+**Quy trình xử lý:**
+
+1. Người dùng nhập URL và chọn nơi lưu file.
+2. Nhấn **Tải xuống**, chương trình kiểm tra dữ liệu đầu vào.
+3. Client gửi HTTP GET Request đến Web Server.
+4. Web Server trả về nội dung trang web.
+5. `WebClient` ghi dữ liệu nhận được xuống file `.html`.
+6. Chương trình đọc lại file và hiển thị nội dung lên `rtbContent`.
+
+**Sơ đồ hoạt động:**
+
+```text
+Người dùng
+    |
+    v
+Nhập URL (txtURL) + Chọn nơi lưu (btnBrowse)
+    |
+    v
+Nhấn Tải xuống (btnDownload_Click)
+    |
+    v
+Kiểm tra URL và đường dẫn
+    |
+    v
+WebClient.DownloadFile -> Web Server
+    |
+    v
+Lưu file .html xuống ổ đĩa
+    |
+    v
+File.ReadAllText -> Hiển thị (rtbContent)
+```
+
+### ▶️ Hướng dẫn sử dụng
+
+1. Mở solution `Lab04` bằng Microsoft Visual Studio.
+2. Chọn project `Bai02` làm **Startup Project**.
+3. Nhấn `Ctrl + Shift + B` để Build Solution.
+4. Nhấn `F5` để chạy chương trình.
+5. Nhập URL cần tải, ví dụ `https://portal.uit.edu.vn`.
+
+<!-- 🖼️ CHÈN ẢNH 2: Màn hình đã nhập URL vào ô "Địa chỉ URL" -->
+<img width="569" height="680" alt="Screenshot 2026-11-23 184858" src="https://github.com/user-attachments/assets/d061b1a9-c9a7-4afc-b668-76fd6fab0541" />
+
+
+6. Nhấn **Chọn...** để chọn nơi lưu file.
+
+<!-- 🖼️ CHÈN ẢNH 3: Hộp thoại SaveFileDialog khi chọn nơi lưu (tên mặc định uit.html) -->
+<img width="582" height="673" alt="Screenshot 2026-11-23 184739" src="https://github.com/user-attachments/assets/92506a48-d992-46da-83ba-3e6e3bb93f7f" />
+
+7. Nhấn **Tải xuống**, chờ thông báo thành công.
+
+<!-- 🖼️ CHÈN ẢNH 4: Kết quả tải thành công: MessageBox "Đã tải và lưu file thành công!" + trạng thái "Tải thành công!" + nội dung HTML trong rtbContent -->
+<img width="574" height="683" alt="Screenshot 2026-11-23 185131" src="https://github.com/user-attachments/assets/74ac8274-b9ca-41dd-8638-29ffb3832945" />
+
+8. Mở file `.html` đã lưu để kiểm tra.
+
+<!-- 🖼️ CHÈN ẢNH 5: File uit.html đã lưu trong thư mục (hoặc mở file bằng trình duyệt/Notepad) -->
+<img width="922" height="929" alt="Screenshot 2026-11-23 185236" src="https://github.com/user-attachments/assets/8bc376fb-c287-475a-8011-78b157523f0e" />
+
+9. (Tuỳ chọn) Thử bỏ trống URL hoặc đường dẫn để xem thông báo lỗi.
+
+<!-- 🖼️ CHÈN ẢNH 6 (tuỳ chọn): Thông báo lỗi đỏ "Vui lòng nhập đủ URL và đường dẫn!" -->
+<img width="572" height="677" alt="Screenshot 2026-11-23 185350" src="https://github.com/user-attachments/assets/204249d7-2629-4877-a01c-114953fcd46f" />
+
+
+> [!NOTE]
+> Chương trình lưu trang web dưới dạng file HTML và hiển thị mã nguồn dạng văn bản, không tải kèm hình ảnh, CSS hay JavaScript của trang.
+
+---
+## 📄 BÀI 3 – TRÌNH DUYỆT WEB CƠ BẢN (BASIC WEB BROWSER)
+
+### 🖼️ Giao diện chương trình
+
+**Giao diện Trình duyệt Web cơ bản**
+
+<p align="center">
+
+<!-- 🖼️ CHÈN ẢNH 1: Giao diện tổng quan Bài 3 (có WebView đang hiển thị trang uit.edu.vn) -->
+<img width="825" height="857" alt="Screenshot 2026-11-23 185522" src="https://github.com/user-attachments/assets/8df2d7c6-2f6b-4f91-a4cd-a350e98ef2ec" />
+
+</p>
+
+### 🎯 Nội dung thực hành
+
+- Xây dựng ứng dụng **C# Windows Forms** mô phỏng một trình duyệt web cơ bản.
+- Sử dụng điều khiển **WebView2** (`Microsoft.Web.WebView2`) để hiển thị trang web hoàn chỉnh (HTML, CSS, JavaScript, hình ảnh).
+- Sử dụng `WebClient` để tải file HTML và mã nguồn trang web.
+- Sử dụng thư viện **HtmlAgilityPack** để phân tích HTML và trích xuất các thẻ `<img>`.
+- Tự động tải toàn bộ hình ảnh của trang web về thư mục do người dùng chọn.
+- Sử dụng `SaveFileDialog`, `FolderBrowserDialog` để chọn nơi lưu dữ liệu.
+- Xử lý lỗi bằng `try-catch` và thông báo bằng `MessageBox`.
+
+### 🛠️ Cách thức thực hiện
+
+**1. Khởi tạo giao diện (`Bai03Form`)**
+
+- Khởi tạo Windows Forms bằng `InitializeComponent()`.
+- Sử dụng `txtURL` để nhập địa chỉ truy cập (mặc định `http://uit.edu.vn`).
+- Sử dụng `webView21` (WebView2) để hiển thị trang web.
+- Sử dụng 4 nút chức năng:
+  - `btnLoad`: tải và hiển thị trang web.
+  - `btnDownloadFiles`: tải trang web về file HTML.
+  - `btnDownloadResources`: tải toàn bộ hình ảnh của trang.
+  - `btnViewSource`: xem mã nguồn HTML.
+- Sử dụng `btnThoat` để đóng chương trình.
+
+**2. Khởi tạo WebView2 (`Bai03Form_Load()`)**
+
+- Khi form được mở, sự kiện `Bai03Form_Load()` gọi `EnsureCoreWebView2Async(null)` để khởi tạo lõi trình duyệt WebView2.
+- Sau khi khởi tạo xong, tự động điều hướng đến URL trong `txtURL` bằng `CoreWebView2.Navigate()`.
+
+**3. Tải trang web (`btnLoad_Click()`)**
+
+- Kiểm tra `txtURL` không rỗng bằng `string.IsNullOrWhiteSpace()`.
+- Kiểm tra `CoreWebView2` đã sẵn sàng; nếu chưa thì hiển thị thông báo yêu cầu đợi và thử lại.
+- Nếu sẵn sàng, gọi `CoreWebView2.Navigate(txtURL.Text)` để hiển thị trang web.
+
+**4. Tải trang web về file HTML (`btnDownloadFiles_Click()`)**
+
+- Mở `SaveFileDialog` với bộ lọc `HTML Files|*.html`, tên mặc định `page.html`.
+- Sử dụng `WebClient.DownloadFile()` để tải trang web và lưu xuống đường dẫn đã chọn.
+- Hiển thị thông báo thành công, hoặc thông báo lỗi nếu có ngoại lệ.
+
+**5. Tải hình ảnh của trang web (`btnDownloadResources_Click()`)**
+
+- Mở `FolderBrowserDialog` để chọn thư mục lưu hình ảnh.
+- Dùng `WebClient.DownloadString()` để lấy toàn bộ mã HTML của trang.
+- Dùng `HtmlAgilityPack.HtmlDocument.LoadHtml()` để phân tích HTML, và `SelectNodes("//img")` để lấy tất cả thẻ `<img>`.
+- Với mỗi thẻ `<img>`:
+  - Lấy giá trị thuộc tính `src` bằng `GetAttributeValue()`.
+  - Ghép với địa chỉ gốc bằng `new Uri(baseUri, src)` để xử lý cả đường dẫn tương đối.
+  - Lấy tên file bằng `Path.GetFileName()` và tạo đường dẫn lưu bằng `Path.Combine()`.
+  - Tải ảnh bằng `DownloadFile()`, bỏ qua ảnh lỗi bằng `try-catch` lồng bên trong.
+- Thông báo số lượng hình ảnh đã tải thành công; nếu trang không có ảnh thì hiển thị "Không tìm thấy hình ảnh nào!".
+
+**6. Xem mã nguồn (`btnViewSource_Click()`)**
+
+- Dùng `WebClient.DownloadString()` để lấy mã HTML của trang.
+- Tạo một `Form` mới kích thước 800x600 chứa `RichTextBox` (`Dock = Fill`, font `Consolas`).
+- Hiển thị bằng `ShowDialog()`.
+
+### 📡 Giao thức trao đổi dữ liệu
+
+| Thành phần | Chức năng |
+|---|---|
+| `HTTP/HTTPS GET` | Yêu cầu lấy nội dung trang web và tài nguyên |
+| `WebView2` | Hiển thị (render) trang web hoàn chỉnh |
+| `WebClient` | Tải file HTML, mã nguồn và hình ảnh |
+| `HtmlAgilityPack` | Phân tích HTML, trích xuất thẻ `<img>` |
+| `SaveFileDialog` | Chọn nơi lưu file HTML |
+| `FolderBrowserDialog` | Chọn thư mục lưu hình ảnh |
+| `RichTextBox` | Hiển thị mã nguồn HTML |
+
+**Quy trình xử lý:**
+
+1. Người dùng nhập URL; WebView2 hiển thị trang web.
+2. Người dùng chọn chức năng: tải HTML, tải ảnh hoặc xem mã nguồn.
+3. Client gửi HTTP GET Request đến Web Server.
+4. Web Server trả về HTML hoặc tài nguyên được yêu cầu.
+5. Chương trình xử lý dữ liệu (lưu file, phân tích thẻ `<img>`, hiển thị mã nguồn).
+6. Thông báo kết quả cho người dùng.
+
+**Sơ đồ hoạt động:**
+
+```text
+Người dùng
+    |
+    v
+Nhập URL (txtURL)
+    |
+    +--> Load -------------> WebView2.Navigate -> Hiển thị trang web
+    |
+    +--> Tải HTML ---------> WebClient.DownloadFile -> Lưu file .html
+    |
+    +--> Tải Ảnh ----------> WebClient.DownloadString
+    |                              |
+    |                              v
+    |                        HtmlAgilityPack: SelectNodes("//img")
+    |                              |
+    |                              v
+    |                        DownloadFile từng ảnh -> Thư mục đã chọn
+    |
+    +--> Xem Code ---------> WebClient.DownloadString -> Form mới (RichTextBox)
+```
+
+### ▶️ Hướng dẫn sử dụng
+
+1. Mở solution `Lab04` bằng Microsoft Visual Studio.
+2. Chọn project `Bai03` làm **Startup Project**.
+3. Cài các gói NuGet nếu chưa có: `Microsoft.Web.WebView2` và `HtmlAgilityPack` (Restore NuGet Packages).
+4. Máy cần có **WebView2 Runtime** (đã có sẵn trên Windows 10/11 có Edge).
+5. Nhấn `Ctrl + Shift + B` để Build Solution, rồi `F5` để chạy.
+6. Nhập URL (ví dụ `https://portal.uit.edu.vn`) và nhấn **Tải trang (Load)**.
+
+<!-- 🖼️ CHÈN ẢNH 2: Trang web hiển thị trong WebView sau khi nhấn Load -->
+<img width="832" height="869" alt="Screenshot 2026-11-23 185653" src="https://github.com/user-attachments/assets/02990ad7-101a-4384-85fc-eac24e1e8fb5" />
+
+7. Nhấn **Tải HTML**, chọn nơi lưu file.
+
+<!-- 🖼️ CHÈN ẢNH 3: Hộp thoại SaveFileDialog (page.html) -->
+<img width="933" height="519" alt="Screenshot 2026-11-23 185811" src="https://github.com/user-attachments/assets/e37c72a7-d060-456c-8988-63e1fd7701a2" />
+
+<!-- 🖼️ CHÈN ẢNH 4: MessageBox "Tải file HTML thành công!" -->
+<img width="831" height="874" alt="Screenshot 2026-11-23 185824" src="https://github.com/user-attachments/assets/c1073e2b-e9c7-4f02-a225-788f932ba2f9" />
+
+8. Nhấn **Tải Ảnh**, chọn thư mục lưu hình ảnh.
+
+<!-- 🖼️ CHÈN ẢNH 5: Hộp thoại FolderBrowserDialog chọn thư mục -->
+<img width="928" height="559" alt="Screenshot 2026-11-23 190009" src="https://github.com/user-attachments/assets/b3f77b44-4cb0-4757-bfa1-8f8d0897fbd3" />
+
+<!-- 🖼️ CHÈN ẢNH 6: MessageBox "Đã tải thành công X hình ảnh vào thư mục..." -->
+<img width="847" height="866" alt="Screenshot 2026-11-23 190022" src="https://github.com/user-attachments/assets/2f92fb31-a627-4bef-8ca8-6f3c1b701e0f" />
+
+<!-- 🖼️ CHÈN ẢNH 7: Thư mục chứa các ảnh đã tải về -->
+<img width="503" height="245" alt="Screenshot 2026-11-23 190340" src="https://github.com/user-attachments/assets/00847f1d-3acc-40e2-ad55-f3206796325b" />
+
+9. Nhấn **Xem Code** để xem mã nguồn HTML.
+
+<!-- 🖼️ CHÈN ẢNH 8: Cửa sổ "Mã nguồn HTML" hiển thị code -->
+<img width="787" height="594" alt="Screenshot 2026-11-23 190457" src="https://github.com/user-attachments/assets/e2f3b74a-5d7f-462c-915f-b19411fded3a" />
+
+> [!NOTE]
+> - Chương trình dùng **WebView2** nên trang web được hiển thị đầy đủ như trình duyệt thật (khác với Bài 1 chỉ hiển thị mã nguồn dạng văn bản).
+> - Chức năng **Tải Ảnh** chỉ tải các ảnh nằm trong thẻ `<img>`; ảnh nền CSS hoặc ảnh tải động bằng JavaScript sẽ không được tải.
+
+---
+
+---
 
 # 🍱Bài 7: Hôm Nay Ăn Gì? 
 
